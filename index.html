@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>calc</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar { height: 4px; width: 4px; }
+    ::-webkit-scrollbar-track { background: #18181b; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+    input[type=number] { -moz-appearance: textfield; }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen w-screen flex flex-col justify-start p-2 max-w-lg mx-auto select-none gap-2 font-sans overflow-x-hidden">
+
+  <!-- 1st SECTION: Header Section -->
+  <header class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 shadow-sm shrink-0">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-zinc-700 to-zinc-500 flex items-center justify-center text-zinc-100 font-black text-xs shadow">
+        FiC
+      </div>
+      <h1 class="text-base font-black tracking-tight text-zinc-100">Fidget-Cammer 0.1</h1>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Mode Shortcuts -->
+      <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg p-0.5 text-xs font-bold font-mono">
+        <button id="mode-m" onclick="setMode('manual')" class="px-3 py-1.5 rounded transition text-zinc-400 hover:text-zinc-100 text-sm">M</button>
+        <button id="mode-a" onclick="setMode('aperture')" class="px-3 py-1.5 rounded transition text-zinc-400 hover:text-zinc-100 text-sm">A</button>
+        <button id="mode-s" onclick="setMode('shutter')" class="px-3 py-1.5 rounded transition text-zinc-400 hover:text-zinc-100 text-sm">S</button>
+        <button id="mode-iso" onclick="setMode('iso')" class="px-3 py-1.5 rounded transition text-zinc-400 hover:text-zinc-100 text-sm">ISO</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 2nd SECTION: Main EV Display & Delta Bar Card -->
+  <section class="bg-zinc-900 border border-zinc-800 rounded-xl p-2 shadow flex flex-col gap-2 shrink-0">
+    <div class="grid grid-cols-2 gap-2">
+      <!-- CURRENT EV Input (Left) -->
+      <div class="bg-zinc-950 border border-zinc-800/80 rounded-lg p-1.5 flex flex-col justify-between">
+        <span class="text-[9px] font-bold tracking-wider uppercase text-zinc-400">CURRENT EV</span>
+        <div class="flex items-center gap-1 my-0.5">
+          <input type="number" id="current-ev-input" step="0.1" value="11.0" onchange="onCurrentEVInputChange()" class="w-20 bg-zinc-900 border border-zinc-700 text-base font-black font-mono text-amber-400 rounded px-1 py-0 text-center focus:outline-none">
+          <span class="text-[10px] font-semibold text-zinc-400">EV</span>
+        </div>
+      </div>
+
+      <!-- CAMERA EV Display (Right) -->
+      <div class="bg-zinc-950 border border-zinc-800/80 rounded-lg p-1.5 flex flex-col justify-between">
+        <div class="flex justify-between items-center">
+          <span class="text-[9px] font-bold tracking-wider uppercase text-zinc-400">CAMERA EV</span>
+          <div id="exposure-badge" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            Optimal
+          </div>
+        </div>
+        <div class="flex items-baseline gap-1 my-0.5">
+          <span id="camera-ev-display" class="text-xl font-black font-mono text-zinc-100">14.00</span>
+          <span class="text-[10px] font-semibold text-zinc-400">EV</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ±12 EV Over/Under Indicator Bar -->
+    <div class="space-y-1 px-0.5">
+      <div class="flex justify-center items-center text-[9px] font-mono text-zinc-400">
+        <span id="meter-delta-text" class="text-amber-400 font-bold">0.00 EV</span>
+      </div>
+      <div class="relative h-2.5 w-full bg-zinc-950 border border-zinc-800 rounded-full overflow-hidden flex items-center">
+        <!-- Center baseline indicator -->
+        <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-zinc-600 z-10 transform -translate-x-1/2"></div>
+        <div id="meter-bar" class="h-full bg-emerald-500 transition-all duration-150 rounded-full" style="width: 2%; margin-left: 49%;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3rd SECTION: 3 Side-by-Side Parameter Cards (Aperture, Shutter, ISO) -->
+  <main class="grid grid-cols-3 gap-1.5 items-start">
+
+    <!-- 1. APERTURE CARD -->
+    <div id="card-aperture" class="bg-zinc-900 border border-zinc-800 rounded-xl p-1.5 shadow flex flex-col gap-1 transition-all min-w-0">
+      <div class="flex justify-between items-center gap-0.5">
+        <span class="text-[9px] font-bold tracking-wider uppercase text-zinc-300 truncate">Aperture</span>
+        <button id="prio-aperture-btn" onclick="togglePriority('aperture')" class="px-1 py-0.5 rounded text-[8px] font-bold uppercase transition border border-zinc-700 bg-zinc-800 text-zinc-400 shrink-0">
+          Manual
+        </button>
+      </div>
+
+      <!-- Black Cell Container with Fixed Height -->
+      <div class="bg-zinc-950 border border-zinc-800/80 rounded-lg p-1 h-[52px] flex flex-col justify-center items-center min-w-0">
+        <input type="text" id="aperture-input" value="2.828" onchange="onManualInputChange('aperture')" class="w-full bg-transparent text-xs sm:text-sm font-black font-mono text-zinc-100 text-center focus:outline-none focus:border-b focus:border-amber-500">
+        <div id="aperture-camera-display" class="w-full font-black font-mono text-center truncate">f/2.8</div>
+      </div>
+
+      <!-- EV Adjustment Steppers Container -->
+      <div id="steppers-container-aperture" class="grid grid-cols-4 gap-0.5 font-mono">
+        <!-- Rendered dynamically via JS -->
+      </div>
+
+      <!-- Inline Cell Limits -->
+      <div class="pt-1 border-t border-zinc-800/60 grid grid-cols-2 gap-0.5 text-[8px] font-mono">
+        <div>
+          <span class="text-zinc-500 text-[7px] block uppercase">Min</span>
+          <input type="number" id="min-aperture-input" step="0.1" value="1.0" onchange="onLimitsChange()" class="w-full bg-zinc-950 border border-zinc-800 rounded px-0.5 py-0.5 text-zinc-300 text-center focus:outline-none">
+        </div>
+        <div>
+          <span class="text-zinc-500 text-[7px] block uppercase">Max</span>
+          <input type="number" id="max-aperture-input" step="0.1" value="32.0" onchange="onLimitsChange()" class="w-full bg-zinc-950 border border-zinc-800 rounded px-0.5 py-0.5 text-zinc-300 text-center focus:outline-none">
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. SHUTTER SPEED CARD -->
+    <div id="card-shutter" class="bg-zinc-900 border border-zinc-800 rounded-xl p-1.5 shadow flex flex-col gap-1 transition-all min-w-0">
+      <div class="flex justify-between items-center gap-0.5">
+        <span class="text-[9px] font-bold tracking-wider uppercase text-zinc-300 truncate">Shutter</span>
+        <button id="prio-shutter-btn" onclick="togglePriority('shutter')" class="px-1 py-0.5 rounded text-[8px] font-bold uppercase transition border border-zinc-700 bg-zinc-800 text-zinc-400 shrink-0">
+          Manual
+        </button>
+      </div>
+
+      <!-- Black Cell Container with Fixed Height -->
+      <div class="bg-zinc-950 border border-zinc-800/80 rounded-lg p-1 h-[52px] flex flex-col justify-center items-center min-w-0">
+        <input type="text" id="shutter-input" value="1/256" onchange="onManualInputChange('shutter')" class="w-full bg-transparent text-xs sm:text-sm font-black font-mono text-zinc-100 text-center focus:outline-none focus:border-b focus:border-amber-500">
+        <div id="shutter-camera-display" class="w-full font-black font-mono text-center truncate">1/250s</div>
+      </div>
+
+      <!-- EV Adjustment Steppers Container -->
+      <div id="steppers-container-shutter" class="grid grid-cols-4 gap-0.5 font-mono">
+        <!-- Rendered dynamically via JS -->
+      </div>
+
+      <!-- Inline Cell Limits -->
+      <div class="pt-1 border-t border-zinc-800/60 grid grid-cols-2 gap-0.5 text-[8px] font-mono">
+        <div>
+          <span class="text-zinc-500 text-[7px] block uppercase">Min</span>
+          <input type="text" id="min-shutter-input" value="1/8000" onchange="onLimitsChange()" class="w-full bg-zinc-950 border border-zinc-800 rounded px-0.5 py-0.5 text-zinc-300 text-center focus:outline-none">
+        </div>
+        <div>
+          <span class="text-zinc-500 text-[7px] block uppercase">Max</span>
+          <input type="text" id="max-shutter-input" value="30" onchange="onLimitsChange()" class="w-full bg-zinc-950 border border-zinc-800 rounded px-0.5 py-0.5 text-zinc-300 text-center focus:outline-none">
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. ISO CARD -->
+    <div id="card-iso" class="bg-zinc-900 border border-zinc-800 rounded-xl p-1.5 shadow flex flex-col gap-1 transition-all min-w-0">
+      <div class="flex justify-between items-center gap-0.5">
+        <span class="text-[9px] font-bold tracking-wider uppercase text-zinc-300 truncate">ISO</span>
+        <button id="prio-iso-btn" onclick="togglePriority('iso')" class="px-1 py-0.5 rounded text-[8px] font-bold uppercase transition border border-zinc-700 bg-zinc-800 text-zinc-400 shrink-0">
+          Manual
+        </button>
+      </div>
+
+      <!-- Black Cell Container with Fixed Height -->
+      <div class="bg-zinc-950 border border-zinc-800/80 rounded-lg p-1 h-[52px] flex flex-col justify-center items-center min-w-0">
+        <input type="text" id="iso-input" value="400" onchange="onManualInputChange('iso')" class="w-full bg-transparent text-xs sm:text-sm font-black font-mono text-zinc-100 text-center focus:outline-none focus:border-b focus:border-amber-500">
+        <div id="iso-camera-display" class="w-full font-black font-mono text-center truncate">ISO 400</div>
+      </div>
+
+      <!-- EV Adjustment Steppers Container -->
+      <div id="steppers-container-iso" class="grid grid-cols-4 gap-0.5 font-mono">
+        <!-- Rendered dynamically via JS -->
+      </div>
+
+      <!-- Inline Cell Limits -->
+      <div class="pt-1 border-t border-zinc-800/60 grid grid-cols-2 gap-0.5 text-[8px] font-mono">
+        <div>
+          <span class="text-zinc-500 text-[7px] block uppercase">Min</span>
+          <input type="number" id="min-iso-input" value="64" onchange="onLimitsChange()" class="w-full bg-zinc-950 border border-zinc-800 rounded px-0.5 py-0.5 text-zinc-300 text-center focus:outline-none">
+        </div>
+        <div>
+          <span class="text-zinc-500 text-[7px] block uppercase">Max</span>
+          <input type="number" id="max-iso-input" value="6400" onchange="onLimitsChange()" class="w-full bg-zinc-950 border border-zinc-800 rounded px-0.5 py-0.5 text-zinc-300 text-center focus:outline-none">
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 4th SECTION: Dedicated ND Filter Cell -->
+  <section class="bg-zinc-900 border border-zinc-800 rounded-xl p-1.5 shadow shrink-0 flex items-center justify-between font-mono gap-2">
+    <div class="flex items-center gap-1.5 pl-1.5">
+      <i class="fa-solid fa-filter text-zinc-400 text-xs"></i>
+      <span class="text-[10px] font-bold tracking-wider uppercase text-zinc-300">ND Filter</span>
+    </div>
+
+    <!-- Middle Editable ND Value -->
+    <div class="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-0.5 flex items-center gap-1">
+      <span class="text-[9px] text-zinc-500 font-bold">ND</span>
+      <input type="number" id="nd-factor-input" min="1" step="1" value="1" onchange="onNDFactorInputChange()" class="w-12 bg-transparent text-xs font-black font-mono text-amber-400 text-center focus:outline-none">
+    </div>
+
+    <!-- Step Buttons -1EV / +1EV -->
+    <div class="flex items-center gap-1.5">
+      <button onclick="stepND(-1)" class="bg-zinc-800 hover:bg-zinc-700 active:bg-amber-600 text-zinc-200 font-bold px-4 py-1.5 rounded text-xs border border-zinc-700 text-center">-1 EV</button>
+      <button onclick="stepND(1)" class="bg-zinc-800 hover:bg-zinc-700 active:bg-amber-600 text-zinc-200 font-bold px-4 py-1.5 rounded text-xs border border-zinc-700 text-center">+1 EV</button>
+    </div>
+  </section>
+
+  <!-- 5th SECTION: 3 Bottom Utility Buttons (RESET, EXACT VALUES, 1/3 EV STEPS) -->
+  <footer class="grid grid-cols-3 gap-1.5 shrink-0 text-xs font-mono">
+    <!-- 1. RESET Button -->
+    <button onclick="resetBaselines()" class="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl p-2 flex items-center justify-center gap-1.5 text-zinc-300 transition">
+      <i class="fa-solid fa-rotate-left text-zinc-400 text-[10px]"></i>
+      <span class="text-[10px] font-bold uppercase">Reset</span>
+    </button>
+
+    <!-- 2. EXACT VALUES Toggle Button -->
+    <button onclick="toggleExactValues()" id="exact-toggle-btn" class="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl p-2 flex items-center justify-center gap-1.5 text-zinc-300 transition">
+      <span id="exact-led-dot" class="w-2 h-2 rounded-full bg-zinc-700 transition-all duration-200"></span>
+      <span class="text-[10px] font-bold uppercase">Exact Values</span>
+    </button>
+
+    <!-- 3. 1/3 EV STEPS Toggle Button -->
+    <button onclick="toggleStepMode()" id="step-mode-btn" class="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl p-2 flex items-center justify-center gap-1.5 text-zinc-300 transition">
+      <span id="step-led-dot" class="w-2 h-2 rounded-full bg-zinc-700 transition-all duration-200"></span>
+      <span class="text-[10px] font-bold uppercase">1/3 EV Steps</span>
+    </button>
+  </footer>
+
+  <!-- 6th SECTION: EV Scene Presets -->
+  <section class="bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-1 shrink-0">
+    <div class="grid grid-cols-4 sm:grid-cols-8 gap-1 text-center">
+      <button onclick="setPresetEV(-6)" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg px-1 py-0.5 transition flex flex-col items-center justify-center min-w-0">
+        <span class="text-[9px] font-bold font-mono text-amber-400 leading-tight">-6 EV</span>
+        <span class="text-[7.5px] text-zinc-400 font-medium truncate w-full">stars</span>
+      </button>
+      <button onclick="setPresetEV(-3)" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg px-1 py-0.5 transition flex flex-col items-center justify-center min-w-0">
+        <span class="text-[9px] font-bold font-mono text-amber-400 leading-tight">-3 EV</span>
+        <span class="text-[7.5px] text-zinc-400 font-medium truncate w-full">moonlight</span>
+      </button>
+      <button onclick="setPresetEV(0)" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg px-1 py-0.5 transition flex flex-col items-center justify-center min-w-0">
+        <span class="text-[9px] font-bold font-mono text-amber-400 leading-tight">0 EV</span>
+        <span class="text-[7.5px] text-zinc-400 font-medium truncate w-full">night</span>
+      </button>
+      <button onclick="setPresetEV(3)" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg px-1 py-0.5 transition flex flex-col items-center justify-center min-w-0">
+        <span class="text-[9px] font-bold font-mono text-amber-400 leading-tight">3 EV</span>
+        <span class="text-[7.5px] text-zinc-400 font-medium truncate w-full">night street</span>
+      </button>
+      <button onclick="setPresetEV(6)" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg px-1 py-0.5 transition flex flex-col items-center justify-center min-w-0">
+        <span class="text-[9px] font-bold font-mono text-amber-400 leading-tight">6 EV</span>
+        <span class="text-[7.5px] text-zinc-400 font-medium truncate w-full">dark</span>
+      </button>
+      <button onclick="setPresetEV(9)" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg px-1 py-0.5 transition flex flex-col items-center justify-center min-w-0">
+        <span class="text-[9px] font-bold font-mono text-amber-400 leading-tight">9 EV</span>
+        <span class="text-[7.5px] text-zinc-400 font-medium truncate w-full">sunset</span>
+      </button>
+      <button onclick="setPresetEV(12)" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg px-1 py-0.5 transition flex flex-col items-center justify-center min-w-0">
+        <span class="text-[9px] font-bold font-mono text-amber-400 leading-tight">12 EV</span>
+        <span class="text-[7.5px] text-zinc-400 font-medium truncate w-full">overcast</span>
+      </button>
+      <button onclick="setPresetEV(15)" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg px-1 py-0.5 transition flex flex-col items-center justify-center min-w-0">
+        <span class="text-[9px] font-bold font-mono text-amber-400 leading-tight">15 EV</span>
+        <span class="text-[7.5px] text-zinc-400 font-medium truncate w-full">sunlight</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- 7th SECTION: Interactive Smooth EV Belt / Drag Wheel (Bottom) -->
+  <section class="bg-zinc-900 border border-zinc-800 rounded-xl shadow shrink-0 overflow-hidden relative touch-none h-9 flex items-center select-none" id="ev-wheel-container">
+    <canvas id="ev-wheel-canvas" class="w-full h-full block cursor-ew-resize"></canvas>
+    <!-- Center Needle Indicator -->
+    <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-amber-400 z-10 pointer-events-none transform -translate-x-1/2 shadow-[0_0_8px_rgba(251,191,36,0.8)]"></div>
+  </section>
+
+  <script>
+    /* --------------------------------------------------------
+       STATE MANAGEMENT
+    -------------------------------------------------------- */
+    const state = {
+      aperture: Math.pow(Math.SQRT2, 3), // ~2.828
+      shutter: 1 / 256,                  // ~0.00390625s
+      iso: 400,
+      currentEV: 11.0,
+      ndStops: 0,
+      currentMode: 'manual', // 'manual', 'aperture', 'shutter', 'iso'
+      showExactValues: false,
+      useThirdSteps: false,  // false for 2 buttons (1 EV steps), true for 4 buttons (1/3 EV steps)
+      limits: {
+        minAperture: 1.0,
+        maxAperture: 32.0,
+        minShutter: 1 / 8000,
+        maxShutter: 30.0,
+        minISO: 64,
+        maxISO: 6400
+      },
+      manualBaselines: {
+        aperture: Math.pow(Math.SQRT2, 3),
+        shutter: 1 / 256,
+        iso: 400
+      },
+      paramStatuses: {
+        aperture: 'manual',
+        shutter: 'manual',
+        iso: 'manual'
+      }
+    };
+
+    /* --------------------------------------------------------
+       HELPER UTILITIES
+    -------------------------------------------------------- */
+    function calcCameraEV() {
+      const ev100 = Math.log2((state.aperture * state.aperture) / state.shutter) - Math.log2(state.iso / 100);
+      return ev100 + state.ndStops;
+    }
+
+    function formatShutterExact(val) {
+      if (val >= 1) {
+        return val % 1 === 0 ? `${val}s` : `${val.toFixed(2)}s`;
+      }
+      const inv = 1 / val;
+      if (Math.abs(inv - Math.round(inv)) < 0.001) {
+        return `1/${Math.round(inv)}`;
+      }
+      return `1/${inv.toFixed(1)}`;
+    }
+
+    function parseShutterString(str) {
+      if (!str) return 1 / 125;
+      let s = str.trim().toLowerCase().replace('s', '');
+      if (s.includes('/')) {
+        const parts = s.split('/');
+        const num = parseFloat(parts[0]);
+        const den = parseFloat(parts[1]);
+        if (!isNaN(num) && !isNaN(den) && den !== 0) return num / den;
+      }
+      const val = parseFloat(s);
+      return isNaN(val) ? 1 / 125 : val;
+    }
+
+    function setMode(mode) {
+      if (state.currentMode === mode && mode !== 'manual') {
+        state.currentMode = 'manual';
+      } else {
+        state.currentMode = mode;
+      }
+      // Save baseline snapshots when entering a mode
+      state.manualBaselines.aperture = state.aperture;
+      state.manualBaselines.shutter = state.shutter;
+      state.manualBaselines.iso = state.iso;
+
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function togglePriority(param) {
+      setMode(state.currentMode === param ? 'manual' : param);
+    }
+
+    function stepParam(param, steps) {
+      // Step buttons disabled for Auto and Limit parameters
+      if (state.paramStatuses[param] === 'auto' || state.paramStatuses[param] === 'bound') return;
+
+      const factor = Math.pow(2, steps / 3);
+
+      if (param === 'aperture') {
+        state.aperture *= Math.pow(2, steps / 6);
+        if (state.paramStatuses[param] === 'manual' || state.currentMode === 'manual') {
+          state.manualBaselines.aperture = state.aperture;
+        }
+      } else if (param === 'shutter') {
+        state.shutter *= factor;
+        if (state.paramStatuses[param] === 'manual' || state.currentMode === 'manual') {
+          state.manualBaselines.shutter = state.shutter;
+        }
+      } else if (param === 'iso') {
+        state.iso *= factor;
+        if (state.paramStatuses[param] === 'manual' || state.currentMode === 'manual') {
+          state.manualBaselines.iso = state.iso;
+        }
+      }
+
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    /* --------------------------------------------------------
+       CAMERA APPROXIMATION TABLES
+    -------------------------------------------------------- */
+    const CAM_APERTURES = [0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.5, 2.8, 3.2, 3.5, 4.0, 4.5, 5.0, 5.6, 6.3, 7.1, 8.0, 9.0, 10, 11, 13, 14, 16, 18, 20, 22, 25, 29, 32, 36, 40, 45, 51, 64];
+    const CAM_SHUTTERS = [
+      { val: 30, text: '30s' }, { val: 25, text: '25s' }, { val: 20, text: '20s' }, { val: 15, text: '15s' }, { val: 13, text: '13s' },
+      { val: 10, text: '10s' }, { val: 8, text: '8s' }, { val: 6, text: '6s' }, { val: 5, text: '5s' }, { val: 4, text: '4s' },
+      { val: 3.2, text: '3.2s' }, { val: 2.5, text: '2.5s' }, { val: 2, text: '2s' }, { val: 1.6, text: '1.6s' }, { val: 1.3, text: '1.3s' },
+      { val: 1, text: '1s' }, { val: 1/1.3, text: '1/1.3s' }, { val: 1/1.6, text: '1/1.6s' }, { val: 1/2, text: '1/2s' },
+      { val: 1/2.5, text: '1/2.5s' }, { val: 1/3, text: '1/3s' }, { val: 1/4, text: '1/4s' }, { val: 1/5, text: '1/5s' },
+      { val: 1/6, text: '1/6s' }, { val: 1/8, text: '1/8s' }, { val: 1/10, text: '1/10s' }, { val: 1/13, text: '1/13s' },
+      { val: 1/15, text: '1/15s' }, { val: 1/20, text: '1/20s' }, { val: 1/25, text: '1/25s' }, { val: 1/30, text: '1/30s' },
+      { val: 1/40, text: '1/40s' }, { val: 1/50, text: '1/50s' }, { val: 1/60, text: '1/60s' }, { val: 1/80, text: '1/80s' },
+      { val: 1/100, text: '1/100s' }, { val: 1/125, text: '1/125s' }, { val: 1/160, text: '1/160s' }, { val: 1/200, text: '1/200s' },
+      { val: 1/250, text: '1/250s' }, { val: 1/320, text: '1/320s' }, { val: 1/400, text: '1/400s' }, { val: 1/500, text: '1/500s' },
+      { val: 1/640, text: '1/640s' }, { val: 1/800, text: '1/800s' }, { val: 1/1000, text: '1/1000s' }, { val: 1/1250, text: '1/1250s' },
+      { val: 1/1600, text: '1/1600s' }, { val: 1/2000, text: '1/2000s' }, { val: 1/2500, text: '1/2500s' }, { val: 1/3200, text: '1/3200s' },
+      { val: 1/4000, text: '1/4000s' }, { val: 1/5000, text: '1/5000s' }, { val: 1/6400, text: '1/6400s' }, { val: 1/8000, text: '1/8000s' },
+      { val: 1/16000, text: '1/16000s' }, { val: 1/32000, text: '1/32000s' }, { val: 1/64000, text: '1/64000s' }, { val: 1/128000, text: '1/128000s' }
+    ];
+    const CAM_ISOS = [12, 25, 50, 64, 80, 100, 125, 160, 200, 250, 320, 400, 500, 640, 800, 1000, 1250, 1600, 2000, 2500, 3200, 4000, 5000, 6400, 12800, 25600, 51200, 102400];
+
+    function getClosestCamAperture(val) {
+      let closest = CAM_APERTURES[0];
+      let minDiff = Math.abs(val - closest);
+      for (let i = 1; i < CAM_APERTURES.length; i++) {
+        let diff = Math.abs(val - CAM_APERTURES[i]);
+        if (diff < minDiff) { minDiff = diff; closest = CAM_APERTURES[i]; }
+      }
+      return `f/${closest}`;
+    }
+
+    function getClosestCamShutter(val) {
+      let closest = CAM_SHUTTERS[0];
+      let minDiff = Math.abs(Math.log2(val) - Math.log2(closest.val));
+      for (let i = 1; i < CAM_SHUTTERS.length; i++) {
+        let diff = Math.abs(Math.log2(val) - Math.log2(CAM_SHUTTERS[i].val));
+        if (diff < minDiff) { minDiff = diff; closest = CAM_SHUTTERS[i]; }
+      }
+      return closest.text;
+    }
+
+    function getClosestCamISO(val) {
+      let closest = CAM_ISOS[0];
+      let minDiff = Math.abs(Math.log2(val) - Math.log2(closest));
+      for (let i = 1; i < CAM_ISOS.length; i++) {
+        let diff = Math.abs(Math.log2(val) - Math.log2(CAM_ISOS[i]));
+        if (diff < minDiff) { minDiff = diff; closest = CAM_ISOS[i]; }
+      }
+      return `ISO ${closest}`;
+    }
+
+    /* --------------------------------------------------------
+       COMPUTATION & CASCADING AUTO/LIMIT LOGIC
+    -------------------------------------------------------- */
+    function recomputeNonPriorityParam() {
+      // 1. FREE MANUAL MODE: ignore limits entirely
+      if (state.currentMode === 'manual') {
+        state.paramStatuses = { aperture: 'manual', shutter: 'manual', iso: 'manual' };
+        return;
+      }
+
+      const reqEv100 = state.currentEV - state.ndStops;
+      const status = { aperture: 'manual', shutter: 'manual', iso: 'manual' };
+      status[state.currentMode] = 'priority';
+
+      // Define primary and secondary parameters per priority mode
+      let primary, secondary;
+      if (state.currentMode === 'aperture') {
+        primary = 'shutter';
+        secondary = 'iso';
+      } else if (state.currentMode === 'shutter') {
+        primary = 'aperture';
+        secondary = 'iso';
+      } else { // iso priority
+        primary = 'shutter';
+        secondary = 'aperture';
+      }
+
+      // Step A: Calculate ideal Primary Auto value holding secondary at its manual baseline
+      const prioVal = state[state.currentMode];
+      const secBaseline = state.manualBaselines[secondary];
+
+      let idealPrimary;
+      if (state.currentMode === 'aperture') {
+        idealPrimary = (prioVal * prioVal * 100) / (secBaseline * Math.pow(2, reqEv100));
+      } else if (state.currentMode === 'shutter') {
+        idealPrimary = Math.sqrt((prioVal * secBaseline * Math.pow(2, reqEv100)) / 100);
+      } else { // iso
+        idealPrimary = (secBaseline * secBaseline * 100) / (prioVal * Math.pow(2, reqEv100));
+      }
+
+      const pMin = primary === 'aperture' ? state.limits.minAperture : (primary === 'shutter' ? state.limits.minShutter : state.limits.minISO);
+      const pMax = primary === 'aperture' ? state.limits.maxAperture : (primary === 'shutter' ? state.limits.maxShutter : state.limits.maxISO);
+
+      if (idealPrimary >= pMin && idealPrimary <= pMax) {
+        // Primary Auto is within limits
+        state[primary] = idealPrimary;
+        state[secondary] = secBaseline;
+        status[primary] = 'auto';
+        status[secondary] = 'manual';
+      } else {
+        // Primary Auto hit limit -> lock primary at limit and set to 'bound' (Limit)
+        const clampedPrimary = Math.min(Math.max(idealPrimary, pMin), pMax);
+        state[primary] = clampedPrimary;
+        status[primary] = 'bound';
+
+        // Secondary parameter takes over as 'auto'
+        let idealSecondary;
+        if (secondary === 'iso') {
+          idealSecondary = (state.aperture * state.aperture * 100) / (state.shutter * Math.pow(2, reqEv100));
+        } else if (secondary === 'aperture') {
+          idealSecondary = Math.sqrt((state.shutter * state.iso * Math.pow(2, reqEv100)) / 100);
+        } else { // shutter
+          idealSecondary = (state.aperture * state.aperture * 100) / (state.iso * Math.pow(2, reqEv100));
+        }
+
+        const sMin = secondary === 'aperture' ? state.limits.minAperture : (secondary === 'shutter' ? state.limits.minShutter : state.limits.minISO);
+        const sMax = secondary === 'aperture' ? state.limits.maxAperture : (secondary === 'shutter' ? state.limits.maxShutter : state.limits.maxISO);
+
+        if (idealSecondary >= sMin && idealSecondary <= sMax) {
+          state[secondary] = idealSecondary;
+          status[secondary] = 'auto';
+        } else {
+          // Secondary hit limit as well -> lock secondary and set to 'bound' (Limit)
+          state[secondary] = Math.min(Math.max(idealSecondary, sMin), sMax);
+          status[secondary] = 'bound';
+          // Exposure meter will now shift away from 0 EV
+        }
+      }
+
+      state.paramStatuses = status;
+    }
+
+    /* --------------------------------------------------------
+       UI RENDERER
+    -------------------------------------------------------- */
+    function renderUI() {
+      // 1. Update card text inputs & camera displays
+      const activeEl = document.activeElement;
+
+      const apertureInput = document.getElementById('aperture-input');
+      const apertureCam = document.getElementById('aperture-camera-display');
+      if (activeEl?.id !== 'aperture-input') {
+        apertureInput.value = state.aperture.toFixed(3);
+      }
+      apertureCam.textContent = getClosestCamAperture(state.aperture);
+
+      const shutterInput = document.getElementById('shutter-input');
+      const shutterCam = document.getElementById('shutter-camera-display');
+      if (activeEl?.id !== 'shutter-input') {
+        shutterInput.value = formatShutterExact(state.shutter);
+      }
+      shutterCam.textContent = getClosestCamShutter(state.shutter);
+
+      const isoInput = document.getElementById('iso-input');
+      const isoCam = document.getElementById('iso-camera-display');
+      if (activeEl?.id !== 'iso-input') {
+        isoInput.value = state.iso >= 100 ? Math.round(state.iso) : state.iso.toFixed(3);
+      }
+      isoCam.textContent = getClosestCamISO(state.iso);
+
+      // Handle Exact values toggle UI simplification without changing container size
+      [apertureInput, shutterInput, isoInput].forEach(inp => {
+        if (inp) {
+          if (state.showExactValues) {
+            inp.style.display = 'block';
+          } else {
+            inp.style.display = 'none';
+          }
+        }
+      });
+
+      if (state.showExactValues) {
+        apertureCam.className = "text-xs sm:text-sm font-black font-mono text-zinc-400 truncate mt-0.5";
+        shutterCam.className = "text-xs sm:text-sm font-black font-mono text-zinc-400 truncate mt-0.5";
+        isoCam.className = "text-xs sm:text-sm font-black font-mono text-zinc-400 truncate mt-0.5";
+      } else {
+        apertureCam.className = "text-base sm:text-lg font-black font-mono text-zinc-100 truncate";
+        shutterCam.className = "text-base sm:text-lg font-black font-mono text-zinc-100 truncate";
+        isoCam.className = "text-base sm:text-lg font-black font-mono text-zinc-100 truncate";
+      }
+
+      // Update Bottom Footer Buttons UI with LED Indicators
+      const exactToggleBtn = document.getElementById('exact-toggle-btn');
+      const exactLedDot = document.getElementById('exact-led-dot');
+      if (exactToggleBtn && exactLedDot) {
+        if (state.showExactValues) {
+          exactToggleBtn.className = "bg-zinc-900 border border-zinc-700 rounded-xl p-2 flex items-center justify-center gap-1.5 text-zinc-100 transition";
+          exactLedDot.className = "w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)] transition-all duration-200";
+        } else {
+          exactToggleBtn.className = "bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl p-2 flex items-center justify-center gap-1.5 text-zinc-400 transition";
+          exactLedDot.className = "w-2 h-2 rounded-full bg-zinc-700 transition-all duration-200";
+        }
+      }
+
+      const stepModeBtn = document.getElementById('step-mode-btn');
+      const stepLedDot = document.getElementById('step-led-dot');
+      if (stepModeBtn && stepLedDot) {
+        if (state.useThirdSteps) {
+          stepModeBtn.className = "bg-zinc-900 border border-zinc-700 rounded-xl p-2 flex items-center justify-center gap-1.5 text-zinc-100 transition";
+          stepLedDot.className = "w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)] transition-all duration-200";
+        } else {
+          stepModeBtn.className = "bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl p-2 flex items-center justify-center gap-1.5 text-zinc-400 transition";
+          stepLedDot.className = "w-2 h-2 rounded-full bg-zinc-700 transition-all duration-200";
+        }
+      }
+
+      // 2. Render & Update Parameter Stepper Layouts (2 or 4 buttons)
+      ['aperture', 'shutter', 'iso'].forEach(param => {
+        const container = document.getElementById(`steppers-container-${param}`);
+        const st = state.paramStatuses[param];
+        const isLocked = (st === 'auto' || st === 'bound');
+
+        if (container) {
+          if (state.useThirdSteps) {
+            container.className = "grid grid-cols-4 gap-0.5 font-mono";
+            container.innerHTML = `
+              <button id="step-${param}--3" onclick="stepParam('${param}', -3)" class="${isLocked ? 'bg-zinc-950 text-zinc-600 font-bold py-2 rounded text-xs border border-zinc-800/80 text-center cursor-not-allowed opacity-50' : 'bg-zinc-800 hover:bg-zinc-700 active:bg-amber-600 text-zinc-200 font-bold py-2 rounded text-xs border border-zinc-700 text-center'}" ${isLocked ? 'disabled' : ''}>-1</button>
+              <button id="step-${param}--1" onclick="stepParam('${param}', -1)" class="${isLocked ? 'bg-zinc-950 text-zinc-600 font-bold py-2 rounded text-xs border border-zinc-800/80 text-center cursor-not-allowed opacity-50' : 'bg-zinc-800 hover:bg-zinc-700 active:bg-amber-600 text-zinc-200 font-bold py-2 rounded text-xs border border-zinc-700 text-center'}" ${isLocked ? 'disabled' : ''}>-⅓</button>
+              <button id="step-${param}-1" onclick="stepParam('${param}', 1)" class="${isLocked ? 'bg-zinc-950 text-zinc-600 font-bold py-2 rounded text-xs border border-zinc-800/80 text-center cursor-not-allowed opacity-50' : 'bg-zinc-800 hover:bg-zinc-700 active:bg-amber-600 text-zinc-200 font-bold py-2 rounded text-xs border border-zinc-700 text-center'}" ${isLocked ? 'disabled' : ''}>+⅓</button>
+              <button id="step-${param}-3" onclick="stepParam('${param}', 3)" class="${isLocked ? 'bg-zinc-950 text-zinc-600 font-bold py-2 rounded text-xs border border-zinc-800/80 text-center cursor-not-allowed opacity-50' : 'bg-zinc-800 hover:bg-zinc-700 active:bg-amber-600 text-zinc-200 font-bold py-2 rounded text-xs border border-zinc-700 text-center'}" ${isLocked ? 'disabled' : ''}>+1</button>
+            `;
+          } else {
+            container.className = "grid grid-cols-2 gap-0.5 font-mono";
+            container.innerHTML = `
+              <button id="step-${param}--3" onclick="stepParam('${param}', -3)" class="${isLocked ? 'bg-zinc-950 text-zinc-600 font-bold py-2 rounded text-xs border border-zinc-800/80 text-center cursor-not-allowed opacity-50' : 'bg-zinc-800 hover:bg-zinc-700 active:bg-amber-600 text-zinc-200 font-bold py-2 rounded text-xs border border-zinc-700 text-center'}" ${isLocked ? 'disabled' : ''}>-1 EV</button>
+              <button id="step-${param}-3" onclick="stepParam('${param}', 3)" class="${isLocked ? 'bg-zinc-950 text-zinc-600 font-bold py-2 rounded text-xs border border-zinc-800/80 text-center cursor-not-allowed opacity-50' : 'bg-zinc-800 hover:bg-zinc-700 active:bg-amber-600 text-zinc-200 font-bold py-2 rounded text-xs border border-zinc-700 text-center'}" ${isLocked ? 'disabled' : ''}>+1 EV</button>
+            `;
+          }
+        }
+
+        const btn = document.getElementById(`prio-${param}-btn`);
+        const card = document.getElementById(`card-${param}`);
+
+        if (st === 'priority') {
+          btn.textContent = "Priority";
+          btn.className = "px-1 py-0.5 rounded text-[8px] font-bold uppercase transition bg-amber-500/20 text-amber-400 border border-amber-500/40";
+          card.className = "bg-zinc-900 border border-amber-500/40 rounded-xl p-1.5 shadow flex flex-col gap-1 transition-all min-w-0";
+        } else if (st === 'auto') {
+          btn.textContent = "Auto";
+          btn.className = "px-1 py-0.5 rounded text-[8px] font-bold uppercase transition bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
+          card.className = "bg-zinc-900 border border-emerald-500/40 rounded-xl p-1.5 shadow flex flex-col gap-1 transition-all min-w-0";
+        } else if (st === 'bound') {
+          btn.textContent = "Limit";
+          btn.className = "px-1 py-0.5 rounded text-[8px] font-bold uppercase transition bg-sky-500/20 text-sky-400 border border-sky-500/40";
+          card.className = "bg-zinc-900 border border-sky-500/40 rounded-xl p-1.5 shadow flex flex-col gap-1 transition-all min-w-0";
+        } else {
+          btn.textContent = "Manual";
+          btn.className = "px-1 py-0.5 rounded text-[8px] font-bold uppercase transition border border-zinc-700 bg-zinc-800 text-zinc-400 shrink-0";
+          card.className = "bg-zinc-900 border border-zinc-800 rounded-xl p-1.5 shadow flex flex-col gap-1 transition-all min-w-0";
+        }
+      });
+
+      // Update ND inputs
+      const ndFactorInput = document.getElementById('nd-factor-input');
+      if (document.activeElement?.id !== 'nd-factor-input') {
+        ndFactorInput.value = Math.pow(2, state.ndStops);
+      }
+
+      // Mode shortcut button states
+      const isManual = state.currentMode === 'manual';
+      const isA = state.currentMode === 'aperture';
+      const isS = state.currentMode === 'shutter';
+      const isISO = state.currentMode === 'iso';
+
+      document.getElementById('mode-m').className = `px-2.5 py-1 rounded transition ${isManual ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
+      document.getElementById('mode-a').className = `px-2.5 py-1 rounded transition ${isA ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
+      document.getElementById('mode-s').className = `px-2.5 py-1 rounded transition ${isS ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
+      document.getElementById('mode-iso').className = `px-2.5 py-1 rounded transition ${isISO ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
+
+      // 3. Exposure Calculation & Reversed Meter Logic
+      const cameraEV = calcCameraEV();
+      document.getElementById('camera-ev-display').textContent = cameraEV.toFixed(2);
+
+      const diffEV = state.currentEV - cameraEV;
+      const deltaText = document.getElementById('meter-delta-text');
+      const badge = document.getElementById('exposure-badge');
+      const meterBar = document.getElementById('meter-bar');
+
+      if (Math.abs(diffEV) < 0.05) {
+        deltaText.textContent = "0.00 EV";
+        badge.className = "px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+        badge.textContent = "Optimal";
+
+        meterBar.style.width = "2%";
+        meterBar.style.marginLeft = "49%";
+        meterBar.className = "h-full bg-emerald-500 transition-all duration-150 rounded-full";
+      } else if (diffEV > 0) {
+        deltaText.textContent = `+${diffEV.toFixed(2)} EV Over`;
+        badge.className = "px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20";
+        badge.textContent = `+${diffEV.toFixed(2)} EV Over`;
+
+        const clamped = Math.min(12, diffEV);
+        const width = (clamped / 12) * 50;
+        meterBar.style.width = `${width}%`;
+        meterBar.style.marginLeft = "50%";
+        meterBar.className = "h-full bg-amber-400 transition-all duration-150 rounded-r-full";
+      } else {
+        const absDiff = Math.abs(diffEV);
+        deltaText.textContent = `-${absDiff.toFixed(2)} EV Under`;
+        badge.className = "px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20";
+        badge.textContent = `-${absDiff.toFixed(2)} EV Under`;
+
+        const clamped = Math.min(12, absDiff);
+        const width = (clamped / 12) * 50;
+        meterBar.style.width = `${width}%`;
+        meterBar.style.marginLeft = `${50 - width}%`;
+        meterBar.className = "h-full bg-blue-400 transition-all duration-150 rounded-l-full";
+      }
+
+      // Draw EV Wheel Canvas
+      drawEVWheel();
+    }
+
+    /* --------------------------------------------------------
+       INTERACTIVE EV CANVAS WHEEL
+    -------------------------------------------------------- */
+    function drawEVWheel() {
+      const canvas = document.getElementById('ev-wheel-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect();
+
+      if (canvas.width !== rect.width || canvas.height !== rect.height) {
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+      }
+
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // Render tick marks
+      const pixelsPerEV = 100;
+      const startEV = Math.floor(state.currentEV - (w / 2) / pixelsPerEV) - 1;
+      const endEV = Math.ceil(state.currentEV + (w / 2) / pixelsPerEV) + 1;
+
+      ctx.lineWidth = 1;
+
+      for (let ev = startEV; ev <= endEV; ev += 0.1) {
+        const evRounded = Math.round(ev * 10) / 10;
+        const x = w / 2 + (evRounded - state.currentEV) * pixelsPerEV;
+
+        if (x < -10 || x > w + 10) continue;
+
+        const isWhole = Math.abs(evRounded - Math.round(evRounded)) < 0.01;
+        const isHalf = Math.abs((evRounded * 10) % 5) < 0.01;
+
+        if (isWhole) {
+          ctx.strokeStyle = '#a1a1aa';
+          ctx.beginPath();
+          ctx.moveTo(x, h - 16);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+
+          ctx.fillStyle = '#f4f4f5';
+          ctx.font = '9px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${Math.round(evRounded)}`, x, 11);
+        } else if (isHalf) {
+          ctx.strokeStyle = '#52525b';
+          ctx.beginPath();
+          ctx.moveTo(x, h - 12);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        } else {
+          ctx.strokeStyle = '#27272a';
+          ctx.beginPath();
+          ctx.moveTo(x, h - 7);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        }
+      }
+    }
+
+    /* Wheel Drag & Touch Logic */
+    let isDraggingWheel = false;
+    let startX = 0;
+    let startEVVal = 0;
+
+    function initEVWheelEvents() {
+      const el = document.getElementById('ev-wheel-container');
+      if (!el) return;
+
+      const handleStart = (clientX) => {
+        isDraggingWheel = true;
+        startX = clientX;
+        startEVVal = state.currentEV;
+      };
+
+      const handleMove = (clientX) => {
+        if (!isDraggingWheel) return;
+        const deltaX = clientX - startX;
+        const evDelta = -deltaX / 100; // 100px per EV
+        const newEV = Math.round((startEVVal + evDelta) * 10) / 10;
+        state.currentEV = Math.max(-10, Math.min(30, newEV));
+
+        const evInput = document.getElementById('current-ev-input');
+        if (evInput) evInput.value = state.currentEV.toFixed(1);
+
+        recomputeNonPriorityParam();
+        renderUI();
+      };
+
+      const handleEnd = () => {
+        isDraggingWheel = false;
+      };
+
+      el.addEventListener('mousedown', (e) => handleStart(e.clientX));
+      window.addEventListener('mousemove', (e) => handleMove(e.clientX));
+      window.addEventListener('mouseup', handleEnd);
+
+      el.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 0) handleStart(e.touches[0].clientX);
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (e) => {
+        if (e.touches.length > 0) handleMove(e.touches[0].clientX);
+      }, { passive: true });
+
+      window.addEventListener('touchend', handleEnd);
+      window.addEventListener('resize', drawEVWheel);
+    }
+
+    // Initialize on page load
+    window.onload = function() {
+      initEVWheelEvents();
+      renderUI();
+    };
+
+    /* --------------------------------------------------------
+       EVENT HANDLERS & INPUT LISTENERS
+    -------------------------------------------------------- */
+    function toggleExactValues() {
+      state.showExactValues = !state.showExactValues;
+      renderUI();
+    }
+
+    function toggleStepMode() {
+      state.useThirdSteps = !state.useThirdSteps;
+      renderUI();
+    }
+
+    function setPresetEV(ev) {
+      state.currentEV = ev;
+      const evInput = document.getElementById('current-ev-input');
+      if (evInput) evInput.value = ev.toFixed(1);
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function onCurrentEVInputChange() {
+      const val = parseFloat(document.getElementById('current-ev-input').value);
+      if (!isNaN(val)) {
+        state.currentEV = val;
+        recomputeNonPriorityParam();
+        renderUI();
+      }
+    }
+
+    function stepND(deltaStops) {
+      state.ndStops = Math.max(0, state.ndStops + deltaStops);
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function onNDFactorInputChange() {
+      const factor = parseFloat(document.getElementById('nd-factor-input').value);
+      if (!isNaN(factor) && factor >= 1) {
+        state.ndStops = Math.max(0, Math.round(Math.log2(factor)));
+        recomputeNonPriorityParam();
+        renderUI();
+      }
+    }
+
+    function onManualInputChange(param) {
+      if (param === 'aperture') {
+        const val = parseFloat(document.getElementById('aperture-input').value);
+        if (!isNaN(val) && val > 0) state.aperture = val;
+      } else if (param === 'shutter') {
+        const val = parseShutterString(document.getElementById('shutter-input').value);
+        if (!isNaN(val) && val > 0) state.shutter = val;
+      } else if (param === 'iso') {
+        const val = parseFloat(document.getElementById('iso-input').value);
+        if (!isNaN(val) && val > 0) state.iso = val;
+      }
+
+      if (state.paramStatuses[param] === 'manual' || state.currentMode === 'manual') {
+        state.manualBaselines[param] = state[param];
+      }
+
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function onLimitsChange() {
+      const minA = parseFloat(document.getElementById('min-aperture-input').value);
+      const maxA = parseFloat(document.getElementById('max-aperture-input').value);
+      if (!isNaN(minA)) state.limits.minAperture = minA;
+      if (!isNaN(maxA)) state.limits.maxAperture = maxA;
+
+      const minS = parseShutterString(document.getElementById('min-shutter-input').value);
+      const maxS = parseShutterString(document.getElementById('max-shutter-input').value);
+      if (!isNaN(minS)) state.limits.minShutter = minS;
+      if (!isNaN(maxS)) state.limits.maxShutter = maxS;
+
+      const minISO = parseFloat(document.getElementById('min-iso-input').value);
+      const maxISO = parseFloat(document.getElementById('max-iso-input').value);
+      if (!isNaN(minISO)) state.limits.minISO = minISO;
+      if (!isNaN(maxISO)) state.limits.maxISO = maxISO;
+
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function resetBaselines() {
+      state.aperture = Math.pow(Math.SQRT2, 3);
+      state.shutter = 1 / 256;
+      state.iso = 400;
+      state.ndStops = 0;
+      state.currentMode = 'manual';
+      state.manualBaselines.aperture = state.aperture;
+      state.manualBaselines.shutter = state.shutter;
+      state.manualBaselines.iso = state.iso;
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+  </script>
+</body>
+</html>
