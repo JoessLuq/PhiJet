@@ -3,16 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PhiJet</title>
-
-  <!-- Standard PWA manifest link -->
-  <link rel="manifest" href="manifest.json">
-  <!-- iOS specific tags to enable standalone app mode -->
+  <title>PhiJet PWA</title>
+  
+  <!-- PWA Meta Tags & Web App Manifest -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#09090b">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="PhiJet">
-  <!-- Fallback/explicit Apple touch icon -->
-  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
+  </script>
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -48,7 +59,7 @@
   <header class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 shadow-sm shrink-0">
     <div class="flex items-center gap-2">
       <div class="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center p-0.5 shadow overflow-hidden shrink-0">
-        <img src="./icon-192.png" alt="Logo" class="w-full h-full object-contain" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\'text-zinc-400 font-bold text-[10px]\'>PS</span>';">
+        <img src="./icon-192.png" alt="Logo" class="w-full h-full object-contain" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\'text-zinc-400 font-bold text-[10px]\'>PJ</span>';">
       </div>
       <h1 class="text-base font-black tracking-tight text-zinc-100 flex items-baseline gap-1.5">
         <span>PhiJet</span>
@@ -291,7 +302,7 @@
   </section>
 
   <!-- 7th SECTION: Interactive Smooth EV Belt / Drag Wheel (Bottom) -->
-  <section class="bg-zinc-900 border border-zinc-800 rounded-xl shadow shrink-0 overflow-hidden relative touch-none h-9 flex items-center select-none" id="ev-wheel-container">
+  <section class="bg-zinc-900 border border-zinc-800 rounded-xl shadow shrink-0 overflow-hidden relative touch-none h-[60px] flex items-center select-none" id="ev-wheel-container">
     <canvas id="ev-wheel-canvas" class="w-full h-full block cursor-ew-resize"></canvas>
     <!-- Center Needle Indicator -->
     <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-amber-400 z-10 pointer-events-none transform -translate-x-1/2 shadow-[0_0_8px_rgba(251,191,36,0.8)]"></div>
@@ -788,33 +799,72 @@
     let isDraggingWheel = false;
     let startX = 0;
     let startEVVal = 0;
+    let lastX = 0;
+    let lastTime = 0;
+    let wheelVelocity = 0;
+    let animFrameId = null;
+
+    function applyWheelDelta(deltaX) {
+      const evDelta = -deltaX / 100; // 100px per EV
+      const newEV = Math.round((state.currentEV + evDelta) * 100) / 100;
+      state.currentEV = Math.max(-10, Math.min(30, newEV));
+
+      const evInput = document.getElementById('current-ev-input');
+      if (evInput) evInput.value = state.currentEV.toFixed(1);
+
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function stepInertia() {
+      if (Math.abs(wheelVelocity) > 0.05) {
+        applyWheelDelta(wheelVelocity);
+        wheelVelocity *= 0.97; // Lower decay factor (0.97 vs 0.94) = 2x longer spin inertia
+        animFrameId = requestAnimationFrame(stepInertia);
+      } else {
+        wheelVelocity = 0;
+        if (animFrameId) cancelAnimationFrame(animFrameId);
+      }
+    }
 
     function initEVWheelEvents() {
       const el = document.getElementById('ev-wheel-container');
       if (!el) return;
 
       const handleStart = (clientX) => {
+        if (animFrameId) cancelAnimationFrame(animFrameId);
+        wheelVelocity = 0;
         isDraggingWheel = true;
         startX = clientX;
+        lastX = clientX;
+        lastTime = performance.now();
         startEVVal = state.currentEV;
       };
 
       const handleMove = (clientX) => {
         if (!isDraggingWheel) return;
-        const deltaX = clientX - startX;
-        const evDelta = -deltaX / 100; // 100px per EV
-        const newEV = Math.round((startEVVal + evDelta) * 10) / 10;
-        state.currentEV = Math.max(-10, Math.min(30, newEV));
+        const now = performance.now();
+        const dt = now - lastTime;
+        const deltaX = clientX - lastX;
 
-        const evInput = document.getElementById('current-ev-input');
-        if (evInput) evInput.value = state.currentEV.toFixed(1);
+        if (dt > 0) {
+          // Calculate instant movement speed
+          wheelVelocity = deltaX;
+        }
 
-        recomputeNonPriorityParam();
-        renderUI();
+        applyWheelDelta(deltaX);
+
+        lastX = clientX;
+        lastTime = now;
       };
 
       const handleEnd = () => {
+        if (!isDraggingWheel) return;
         isDraggingWheel = false;
+        if (Math.abs(wheelVelocity) > 0.5) {
+          if (animFrameId) cancelAnimationFrame(animFrameId);
+          animFrameId = requestAnimationFrame(stepInertia);
+        }
       };
 
       el.addEventListener('mousedown', (e) => handleStart(e.clientX));
