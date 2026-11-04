@@ -1,6 +1,6 @@
 {
-  "name": "My HTML App",
-  "short_name": "MyApp",
+  "name": "Phidget-Spotter PWA",
+  "short_name": "Phidget-Spotter",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
