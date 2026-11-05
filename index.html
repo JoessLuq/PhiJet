@@ -67,7 +67,7 @@
       </div>
       <h1 class="text-base font-black tracking-tight text-zinc-100 flex items-baseline gap-1.5">
         <span>PhiJet</span>
-        <span class="text-xs font-semibold text-zinc-400">v0.1</span>
+        <span class="text-xs font-semibold text-zinc-400">v0.13</span>
       </h1>
     </div>
 
@@ -85,9 +85,9 @@
   <!-- 2nd SECTION: Main EV Display & Delta Bar Card -->
   <section class="bg-zinc-900 border border-zinc-800 rounded-xl p-2 shadow flex flex-col gap-2 shrink-0">
     <div class="grid grid-cols-2 gap-2">
-      <!-- CURRENT EV Input (Left) -->
+      <!-- SPOT EV Input (Left) -->
       <div class="bg-zinc-950 border border-zinc-800/80 rounded-lg p-1.5 flex flex-col justify-between">
-        <span class="text-[9px] font-bold tracking-wider uppercase text-zinc-400">CURRENT EV</span>
+        <span class="text-[9px] font-bold tracking-wider uppercase text-zinc-400">SPOT</span>
         <div class="flex items-center gap-1 my-0.5">
           <input type="number" id="current-ev-input" step="0.1" value="11.0" onchange="onCurrentEVInputChange()" class="w-20 bg-zinc-900 border border-zinc-700 text-base font-black font-mono text-amber-400 rounded px-1 py-0 text-center focus:outline-none">
           <span class="text-[10px] font-semibold text-zinc-400">EV</span>
@@ -97,12 +97,12 @@
       <!-- CAMERA EV Display (Right) -->
       <div class="bg-zinc-950 border border-zinc-800/80 rounded-lg p-1.5 flex flex-col justify-between">
         <div class="flex justify-between items-center">
-          <span class="text-[9px] font-bold tracking-wider uppercase text-zinc-400">CAMERA EV</span>
+          <span class="text-[9px] font-bold tracking-wider uppercase text-zinc-400">CAMERA</span>
           <div id="exposure-badge" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
             Optimal
           </div>
         </div>
-        <div class="flex items-baseline gap-1 my-0.5">
+        <div class="flex items-baseline justify-start gap-1 my-0.5 pl-2">
           <span id="camera-ev-display" class="text-xl font-black font-mono text-zinc-100">14.00</span>
           <span class="text-[10px] font-semibold text-zinc-400">EV</span>
         </div>
@@ -111,9 +111,6 @@
 
     <!-- ±12 EV Over/Under Indicator Bar -->
     <div class="space-y-1 px-0.5">
-      <div class="flex justify-center items-center text-[9px] font-mono text-zinc-400">
-        <span id="meter-delta-text" class="text-amber-400 font-bold">0.00 EV</span>
-      </div>
       <div class="relative h-2.5 w-full bg-zinc-950 border border-zinc-800 rounded-full overflow-hidden flex items-center">
         <!-- Center baseline indicator -->
         <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-zinc-600 z-10 transform -translate-x-1/2"></div>
@@ -696,15 +693,18 @@
 
       // 3. Exposure Calculation & Reversed Meter Logic
       const cameraEV = calcCameraEV();
-      document.getElementById('camera-ev-display').textContent = cameraEV.toFixed(2);
+      const cameraEvEl = document.getElementById('camera-ev-display');
+      cameraEvEl.textContent = cameraEV.toFixed(2);
 
       const diffEV = state.currentEV - cameraEV;
-      const deltaText = document.getElementById('meter-delta-text');
+      const absDiff = Math.abs(diffEV);
       const badge = document.getElementById('exposure-badge');
       const meterBar = document.getElementById('meter-bar');
 
-      if (Math.abs(diffEV) < 0.05) {
-        deltaText.textContent = "0.00 EV";
+      // Warning color for > ±6 EV
+      const isExtremeEV = absDiff > 6.0;
+
+      if (absDiff < 0.05) {
         badge.className = "px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
         badge.textContent = "Optimal";
 
@@ -712,26 +712,31 @@
         meterBar.style.marginLeft = "49%";
         meterBar.className = "h-full bg-emerald-500 transition-all duration-150 rounded-full";
       } else if (diffEV > 0) {
-        deltaText.textContent = `+${diffEV.toFixed(2)} EV Over`;
-        badge.className = "px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20";
+        if (isExtremeEV) {
+          badge.className = "px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400 border border-red-500/20";
+        } else {
+          badge.className = "px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20";
+        }
         badge.textContent = `+${diffEV.toFixed(2)} EV Over`;
 
         const clamped = Math.min(12, diffEV);
         const width = (clamped / 12) * 50;
         meterBar.style.width = `${width}%`;
         meterBar.style.marginLeft = "50%";
-        meterBar.className = "h-full bg-amber-400 transition-all duration-150 rounded-r-full";
+        meterBar.className = `h-full ${isExtremeEV ? 'bg-red-500' : 'bg-amber-400'} transition-all duration-150 rounded-r-full`;
       } else {
-        const absDiff = Math.abs(diffEV);
-        deltaText.textContent = `-${absDiff.toFixed(2)} EV Under`;
-        badge.className = "px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20";
+        if (isExtremeEV) {
+          badge.className = "px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-400 border border-red-500/20";
+        } else {
+          badge.className = "px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20";
+        }
         badge.textContent = `-${absDiff.toFixed(2)} EV Under`;
 
         const clamped = Math.min(12, absDiff);
         const width = (clamped / 12) * 50;
         meterBar.style.width = `${width}%`;
         meterBar.style.marginLeft = `${50 - width}%`;
-        meterBar.className = "h-full bg-blue-400 transition-all duration-150 rounded-l-full";
+        meterBar.className = `h-full ${isExtremeEV ? 'bg-red-500' : 'bg-blue-400'} transition-all duration-150 rounded-l-full`;
       }
 
       // Draw EV Wheel Canvas
