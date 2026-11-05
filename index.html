@@ -65,9 +65,12 @@
       <div class="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center p-0.5 shadow overflow-hidden shrink-0">
         <img src="./icon-192.png" alt="Logo" class="w-full h-full object-contain" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\'text-zinc-400 font-bold text-[10px]\'>PJ</span>';">
       </div>
-      <h1 class="text-base font-black tracking-tight text-zinc-100 flex items-baseline gap-1.5">
+      <h1 class="text-base font-black tracking-tight text-zinc-100 flex items-center gap-1.5">
         <span>PhiJet</span>
-        <span class="text-xs font-semibold text-zinc-400">v0.13</span>
+        <span class="text-xs font-semibold text-zinc-400">v0.14</span>
+        <button onclick="forceAppUpdate()" title="Force reload & update PWA" class="w-5 h-5 text-[9px] font-mono font-bold bg-zinc-800 hover:bg-amber-500 hover:text-zinc-950 text-zinc-400 rounded border border-zinc-700 transition flex items-center justify-center shrink-0">
+          <i class="fa-solid fa-rotate"></i>
+        </button>
       </h1>
     </div>
 
@@ -102,7 +105,7 @@
             Optimal
           </div>
         </div>
-        <div class="flex items-baseline justify-start gap-1 my-0.5 pl-2">
+        <div class="flex items-baseline justify-start gap-1 my-0.5 pl-1.5">
           <span id="camera-ev-display" class="text-xl font-black font-mono text-zinc-100">14.00</span>
           <span class="text-[10px] font-semibold text-zinc-400">EV</span>
         </div>
@@ -994,6 +997,27 @@
       state.manualBaselines.iso = state.iso;
       recomputeNonPriorityParam();
       renderUI();
+    }
+
+    async function forceAppUpdate() {
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (let registration of registrations) {
+            await registration.unregister();
+          }
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          for (let key of keys) {
+            await caches.delete(key);
+          }
+        }
+      } catch (err) {
+        console.log('Error clearing cache:', err);
+      }
+      const cleanUrl = window.location.href.split('?')[0];
+      window.location.href = cleanUrl + '?reload=' + new Date().getTime();
     }
   </script>
 </body>
