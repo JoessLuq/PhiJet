@@ -67,7 +67,7 @@
       </button>
       <div class="flex items-baseline gap-1.5">
         <h1 class="text-base font-black tracking-tight text-zinc-100">PhiJet</h1>
-        <span class="text-xs font-semibold text-zinc-400">v0.16</span>
+        <span class="text-xs font-semibold text-zinc-400">v0.17</span>
       </div>
     </div>
 
@@ -78,6 +78,11 @@
         <button id="mode-a" onclick="setMode('aperture')" class="px-3 py-1.5 rounded transition text-zinc-400 hover:text-zinc-100 text-sm">A</button>
         <button id="mode-s" onclick="setMode('shutter')" class="px-3 py-1.5 rounded transition text-zinc-400 hover:text-zinc-100 text-sm">S</button>
         <button id="mode-iso" onclick="setMode('iso')" class="px-3 py-1.5 rounded transition text-zinc-400 hover:text-zinc-100 text-sm">ISO</button>
+      </div>
+
+      <!-- Static 6-Digit Visitor Counter (Smaller size) -->
+      <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg px-1.5 py-0.5 text-[9px] font-mono text-zinc-500 shrink-0 shadow-inner">
+        <span id="visitor-count" class="font-bold text-zinc-600 tracking-tighter">000000</span>
       </div>
     </div>
   </header>
@@ -380,7 +385,6 @@
       } else {
         state.currentMode = mode;
       }
-      // Save baseline snapshots when entering a mode
       state.manualBaselines.aperture = state.aperture;
       state.manualBaselines.shutter = state.shutter;
       state.manualBaselines.iso = state.iso;
@@ -394,7 +398,6 @@
     }
 
     function stepParam(param, steps) {
-      // Step buttons disabled for Auto and Limit parameters
       if (state.paramStatuses[param] === 'auto' || state.paramStatuses[param] === 'bound') return;
 
       const factor = Math.pow(2, steps / 3);
@@ -476,7 +479,6 @@
        COMPUTATION & CASCADING AUTO/LIMIT LOGIC
     -------------------------------------------------------- */
     function recomputeNonPriorityParam() {
-      // 1. FREE MANUAL MODE: ignore limits entirely
       if (state.currentMode === 'manual') {
         state.paramStatuses = { aperture: 'manual', shutter: 'manual', iso: 'manual' };
         return;
@@ -486,7 +488,6 @@
       const status = { aperture: 'manual', shutter: 'manual', iso: 'manual' };
       status[state.currentMode] = 'priority';
 
-      // Define primary and secondary parameters per priority mode
       let primary, secondary;
       if (state.currentMode === 'aperture') {
         primary = 'shutter';
@@ -494,12 +495,11 @@
       } else if (state.currentMode === 'shutter') {
         primary = 'aperture';
         secondary = 'iso';
-      } else { // iso priority
+      } else {
         primary = 'shutter';
         secondary = 'aperture';
       }
 
-      // Step A: Calculate ideal Primary Auto value holding secondary at its manual baseline
       const prioVal = state[state.currentMode];
       const secBaseline = state.manualBaselines[secondary];
 
@@ -508,7 +508,7 @@
         idealPrimary = (prioVal * prioVal * 100) / (secBaseline * Math.pow(2, reqEv100));
       } else if (state.currentMode === 'shutter') {
         idealPrimary = Math.sqrt((prioVal * secBaseline * Math.pow(2, reqEv100)) / 100);
-      } else { // iso
+      } else {
         idealPrimary = (secBaseline * secBaseline * 100) / (prioVal * Math.pow(2, reqEv100));
       }
 
@@ -516,24 +516,21 @@
       const pMax = primary === 'aperture' ? state.limits.maxAperture : (primary === 'shutter' ? state.limits.maxShutter : state.limits.maxISO);
 
       if (idealPrimary >= pMin && idealPrimary <= pMax) {
-        // Primary Auto is within limits
         state[primary] = idealPrimary;
         state[secondary] = secBaseline;
         status[primary] = 'auto';
         status[secondary] = 'manual';
       } else {
-        // Primary Auto hit limit -> lock primary at limit and set to 'bound' (Limit)
         const clampedPrimary = Math.min(Math.max(idealPrimary, pMin), pMax);
         state[primary] = clampedPrimary;
         status[primary] = 'bound';
 
-        // Secondary parameter takes over as 'auto'
         let idealSecondary;
         if (secondary === 'iso') {
           idealSecondary = (state.aperture * state.aperture * 100) / (state.shutter * Math.pow(2, reqEv100));
         } else if (secondary === 'aperture') {
           idealSecondary = Math.sqrt((state.shutter * state.iso * Math.pow(2, reqEv100)) / 100);
-        } else { // shutter
+        } else {
           idealSecondary = (state.aperture * state.aperture * 100) / (state.iso * Math.pow(2, reqEv100));
         }
 
@@ -544,10 +541,8 @@
           state[secondary] = idealSecondary;
           status[secondary] = 'auto';
         } else {
-          // Secondary hit limit as well -> lock secondary and set to 'bound' (Limit)
           state[secondary] = Math.min(Math.max(idealSecondary, sMin), sMax);
           status[secondary] = 'bound';
-          // Exposure meter will now shift away from 0 EV
         }
       }
 
@@ -558,7 +553,6 @@
        UI RENDERER
     -------------------------------------------------------- */
     function renderUI() {
-      // 1. Update card text inputs & camera displays
       const activeEl = document.activeElement;
 
       const apertureInput = document.getElementById('aperture-input');
@@ -582,14 +576,9 @@
       }
       isoCam.textContent = getClosestCamISO(state.iso);
 
-      // Handle Exact values toggle UI simplification without changing container size
       [apertureInput, shutterInput, isoInput].forEach(inp => {
         if (inp) {
-          if (state.showExactValues) {
-            inp.style.display = 'block';
-          } else {
-            inp.style.display = 'none';
-          }
+          inp.style.display = state.showExactValues ? 'block' : 'none';
         }
       });
 
@@ -603,7 +592,6 @@
         isoCam.className = "text-base sm:text-lg font-black font-mono text-zinc-100 truncate";
       }
 
-      // Update Bottom Footer Buttons UI with LED Indicators
       const exactToggleBtn = document.getElementById('exact-toggle-btn');
       const exactLedDot = document.getElementById('exact-led-dot');
       if (exactToggleBtn && exactLedDot) {
@@ -628,7 +616,6 @@
         }
       }
 
-      // 2. Render & Update Parameter Stepper Layouts (2 or 4 buttons)
       ['aperture', 'shutter', 'iso'].forEach(param => {
         const container = document.getElementById(`steppers-container-${param}`);
         const st = state.paramStatuses[param];
@@ -674,13 +661,11 @@
         }
       });
 
-      // Update ND inputs
       const ndFactorInput = document.getElementById('nd-factor-input');
       if (document.activeElement?.id !== 'nd-factor-input') {
         ndFactorInput.value = Math.pow(2, state.ndStops);
       }
 
-      // Mode shortcut button states
       const isManual = state.currentMode === 'manual';
       const isA = state.currentMode === 'aperture';
       const isS = state.currentMode === 'shutter';
@@ -691,7 +676,6 @@
       document.getElementById('mode-s').className = `px-2.5 py-1 rounded transition ${isS ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
       document.getElementById('mode-iso').className = `px-2.5 py-1 rounded transition ${isISO ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
 
-      // 3. Exposure Calculation & Reversed Meter Logic
       const cameraEV = calcCameraEV();
       const cameraEvEl = document.getElementById('camera-ev-display');
       cameraEvEl.textContent = cameraEV.toFixed(2);
@@ -701,7 +685,6 @@
       const badge = document.getElementById('exposure-badge');
       const meterBar = document.getElementById('meter-bar');
 
-      // Warning color for > ±6 EV
       const isExtremeEV = absDiff > 6.0;
 
       if (absDiff < 0.05) {
@@ -739,7 +722,6 @@
         meterBar.className = `h-full ${isExtremeEV ? 'bg-red-500' : 'bg-blue-400'} transition-all duration-150 rounded-l-full`;
       }
 
-      // Draw EV Wheel Canvas
       drawEVWheel();
     }
 
@@ -762,8 +744,7 @@
       ctx.fillStyle = '#18181b';
       ctx.fillRect(0, 0, w, h);
 
-      // Render tick marks
-      const pixelsPerEV = 65; // Snappier scale spacing
+      const pixelsPerEV = 65;
       const startEV = Math.floor(state.currentEV - (w / 2) / pixelsPerEV) - 1;
       const endEV = Math.ceil(state.currentEV + (w / 2) / pixelsPerEV) + 1;
 
@@ -779,24 +760,24 @@
         const isHalf = Math.abs((evRounded * 10) % 5) < 0.01;
 
         if (isWhole) {
-          ctx.strokeStyle = '#a1a1aa'; // Softened light gray main tick
+          ctx.strokeStyle = '#a1a1aa';
           ctx.beginPath();
           ctx.moveTo(x, h - 22);
           ctx.lineTo(x, h);
           ctx.stroke();
 
-          ctx.fillStyle = '#d4d4d8'; // Softer digits (zinc-300 instead of stark white)
+          ctx.fillStyle = '#d4d4d8';
           ctx.font = 'bold 12px monospace';
           ctx.textAlign = 'center';
           ctx.fillText(`${Math.round(evRounded)}`, x, 14);
         } else if (isHalf) {
-          ctx.strokeStyle = '#71717a'; // Muted mid-gray half tick
+          ctx.strokeStyle = '#71717a';
           ctx.beginPath();
           ctx.moveTo(x, h - 15);
           ctx.lineTo(x, h);
           ctx.stroke();
         } else {
-          ctx.strokeStyle = '#52525b'; // Subtle dark-gray minor tick
+          ctx.strokeStyle = '#52525b';
           ctx.beginPath();
           ctx.moveTo(x, h - 10);
           ctx.lineTo(x, h);
@@ -805,7 +786,6 @@
       }
     }
 
-    /* Wheel Drag & Touch Logic */
     let isDraggingWheel = false;
     let startX = 0;
     let startEVVal = 0;
@@ -815,7 +795,7 @@
     let animFrameId = null;
 
     function applyWheelDelta(deltaX) {
-      const evDelta = -deltaX / 65; // Matches snappier 65px per EV ratio
+      const evDelta = -deltaX / 65;
       const newEV = Math.round((state.currentEV + evDelta) * 100) / 100;
       state.currentEV = Math.max(-10, Math.min(30, newEV));
 
@@ -829,7 +809,7 @@
     function stepInertia() {
       if (Math.abs(wheelVelocity) > 0.02) {
         applyWheelDelta(wheelVelocity);
-        wheelVelocity *= 0.985; // Lower friction decay (0.985) for effortless low-resistance spinning
+        wheelVelocity *= 0.985;
         animFrameId = requestAnimationFrame(stepInertia);
       } else {
         wheelVelocity = 0;
@@ -858,7 +838,6 @@
         const deltaX = clientX - lastX;
 
         if (dt > 0) {
-          // Calculate instant movement speed
           wheelVelocity = deltaX;
         }
 
@@ -893,33 +872,60 @@
       window.addEventListener('resize', drawEVWheel);
     }
 
-    // Initialize on page load
     window.onload = function() {
       initEVWheelEvents();
       renderUI();
+      fetchVisitorCount();
     };
+
+    /* --------------------------------------------------------
+       PWA UPDATE & SERVICE WORKER REFRESH
+    -------------------------------------------------------- */
+    function forceAppUpdate() {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for (let registration of registrations) {
+            registration.unregister();
+          }
+          window.location.reload(true);
+        }).catch(() => {
+          window.location.reload(true);
+        });
+      } else {
+        window.location.reload(true);
+      }
+    }
+
+    /* --------------------------------------------------------
+       LIBRECOUNTER TEXT FETCH
+    -------------------------------------------------------- */
+    function fetchVisitorCount() {
+      fetch('https://librecounter.org/counter.svg?id=PhiJet')
+        .then(res => res.text())
+        .then(svgText => {
+          const countEl = document.getElementById('visitor-count');
+          if (!countEl) return;
+
+          const matches = svgText.match(/<text[^>]*>([^<]+)<\/text>/g);
+          if (matches && matches.length > 0) {
+            const numStr = matches.map(m => m.replace(/<[^>]+>/g, '').trim()).join('');
+            const num = parseInt(numStr, 10);
+            if (!isNaN(num)) {
+              countEl.textContent = String(num).padStart(6, '0');
+              return;
+            }
+          }
+          countEl.textContent = '000000';
+        })
+        .catch(() => {
+          const countEl = document.getElementById('visitor-count');
+          if (countEl) countEl.textContent = '000000';
+        });
+    }
 
     /* --------------------------------------------------------
        EVENT HANDLERS & INPUT LISTENERS
     -------------------------------------------------------- */
-    function toggleExactValues() {
-      state.showExactValues = !state.showExactValues;
-      renderUI();
-    }
-
-    function toggleStepMode() {
-      state.useThirdSteps = !state.useThirdSteps;
-      renderUI();
-    }
-
-    function setPresetEV(ev) {
-      state.currentEV = ev;
-      const evInput = document.getElementById('current-ev-input');
-      if (evInput) evInput.value = ev.toFixed(1);
-      recomputeNonPriorityParam();
-      renderUI();
-    }
-
     function onCurrentEVInputChange() {
       const val = parseFloat(document.getElementById('current-ev-input').value);
       if (!isNaN(val)) {
@@ -929,57 +935,55 @@
       }
     }
 
-    function stepND(deltaStops) {
-      state.ndStops = Math.max(0, state.ndStops + deltaStops);
-      recomputeNonPriorityParam();
-      renderUI();
-    }
+    function onManualInputChange(param) {
+      const valStr = document.getElementById(`${param}-input`).value;
+      let numVal = param === 'shutter' ? parseShutterString(valStr) : parseFloat(valStr);
 
-    function onNDFactorInputChange() {
-      const factor = parseFloat(document.getElementById('nd-factor-input').value);
-      if (!isNaN(factor) && factor >= 1) {
-        state.ndStops = Math.max(0, Math.round(Math.log2(factor)));
+      if (!isNaN(numVal) && numVal > 0) {
+        state[param] = numVal;
+        state.manualBaselines[param] = numVal;
         recomputeNonPriorityParam();
         renderUI();
       }
     }
 
-    function onManualInputChange(param) {
-      if (param === 'aperture') {
-        const val = parseFloat(document.getElementById('aperture-input').value);
-        if (!isNaN(val) && val > 0) state.aperture = val;
-      } else if (param === 'shutter') {
-        const val = parseShutterString(document.getElementById('shutter-input').value);
-        if (!isNaN(val) && val > 0) state.shutter = val;
-      } else if (param === 'iso') {
-        const val = parseFloat(document.getElementById('iso-input').value);
-        if (!isNaN(val) && val > 0) state.iso = val;
-      }
+    function onLimitsChange() {
+      const minA = parseFloat(document.getElementById('min-aperture-input').value);
+      const maxA = parseFloat(document.getElementById('max-aperture-input').value);
+      const minS = parseShutterString(document.getElementById('min-shutter-input').value);
+      const maxS = parseShutterString(document.getElementById('max-shutter-input').value);
+      const minI = parseFloat(document.getElementById('min-iso-input').value);
+      const maxI = parseFloat(document.getElementById('max-iso-input').value);
 
-      if (state.paramStatuses[param] === 'manual' || state.currentMode === 'manual') {
-        state.manualBaselines[param] = state[param];
-      }
+      if (!isNaN(minA)) state.limits.minAperture = minA;
+      if (!isNaN(maxA)) state.limits.maxAperture = maxA;
+      if (!isNaN(minS)) state.limits.minShutter = minS;
+      if (!isNaN(maxS)) state.limits.maxShutter = maxS;
+      if (!isNaN(minI)) state.limits.minISO = minI;
+      if (!isNaN(maxI)) state.limits.maxISO = maxI;
 
       recomputeNonPriorityParam();
       renderUI();
     }
 
-    function onLimitsChange() {
-      const minA = parseFloat(document.getElementById('min-aperture-input').value);
-      const maxA = parseFloat(document.getElementById('max-aperture-input').value);
-      if (!isNaN(minA)) state.limits.minAperture = minA;
-      if (!isNaN(maxA)) state.limits.maxAperture = maxA;
+    function stepND(direction) {
+      state.ndStops = Math.max(0, state.ndStops + direction);
+      recomputeNonPriorityParam();
+      renderUI();
+    }
 
-      const minS = parseShutterString(document.getElementById('min-shutter-input').value);
-      const maxS = parseShutterString(document.getElementById('max-shutter-input').value);
-      if (!isNaN(minS)) state.limits.minShutter = minS;
-      if (!isNaN(maxS)) state.limits.maxShutter = maxS;
+    function onNDFactorInputChange() {
+      const val = parseInt(document.getElementById('nd-factor-input').value, 10);
+      if (!isNaN(val) && val >= 1) {
+        state.ndStops = Math.round(Math.log2(val));
+        recomputeNonPriorityParam();
+        renderUI();
+      }
+    }
 
-      const minISO = parseFloat(document.getElementById('min-iso-input').value);
-      const maxISO = parseFloat(document.getElementById('max-iso-input').value);
-      if (!isNaN(minISO)) state.limits.minISO = minISO;
-      if (!isNaN(maxISO)) state.limits.maxISO = maxISO;
-
+    function setPresetEV(ev) {
+      state.currentEV = ev;
+      document.getElementById('current-ev-input').value = ev.toFixed(1);
       recomputeNonPriorityParam();
       renderUI();
     }
@@ -988,34 +992,29 @@
       state.aperture = Math.pow(Math.SQRT2, 3);
       state.shutter = 1 / 256;
       state.iso = 400;
+      state.currentEV = 11.0;
       state.ndStops = 0;
       state.currentMode = 'manual';
-      state.manualBaselines.aperture = state.aperture;
-      state.manualBaselines.shutter = state.shutter;
-      state.manualBaselines.iso = state.iso;
+
+      state.manualBaselines = {
+        aperture: state.aperture,
+        shutter: state.shutter,
+        iso: state.iso
+      };
+
+      document.getElementById('current-ev-input').value = '11.0';
       recomputeNonPriorityParam();
       renderUI();
     }
 
-    async function forceAppUpdate() {
-      try {
-        if ('serviceWorker' in navigator) {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          for (let registration of registrations) {
-            await registration.unregister();
-          }
-        }
-        if ('caches' in window) {
-          const keys = await caches.keys();
-          for (let key of keys) {
-            await caches.delete(key);
-          }
-        }
-      } catch (err) {
-        console.log('Error clearing cache:', err);
-      }
-      const cleanUrl = window.location.href.split('?')[0];
-      window.location.href = cleanUrl + '?reload=' + new Date().getTime();
+    function toggleExactValues() {
+      state.showExactValues = !state.showExactValues;
+      renderUI();
+    }
+
+    function toggleStepMode() {
+      state.useThirdSteps = !state.useThirdSteps;
+      renderUI();
     }
   </script>
 </body>
