@@ -67,7 +67,7 @@
       </button>
       <div class="flex items-baseline gap-1.5">
         <h1 class="text-base font-black tracking-tight text-zinc-100">PhiJet</h1>
-        <span class="text-xs font-semibold text-zinc-400">v0.15</span>
+        <span class="text-xs font-semibold text-zinc-400">v0.16</span>
       </div>
     </div>
 
@@ -304,7 +304,7 @@
 
   <!-- 7th SECTION: Interactive Smooth EV Belt / Drag Wheel (Bottom) -->
   <section class="bg-zinc-900 border border-zinc-800 rounded-xl shadow shrink-0 overflow-hidden relative touch-none h-[60px] flex items-center select-none" id="ev-wheel-container">
-    <canvas id="ev-wheel-canvas" class="w-full h-full block cursor-ew-resize"></canvas>
+    <canvas id="ev-wheel-canvas" class="w-full h-full block cursor-ew-resize bg-zinc-900"></canvas>
     <!-- Center Needle Indicator -->
     <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-amber-400 z-10 pointer-events-none transform -translate-x-1/2 shadow-[0_0_8px_rgba(251,191,36,0.8)]"></div>
   </section>
@@ -759,14 +759,15 @@
 
       const w = canvas.width;
       const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(0, 0, w, h);
 
       // Render tick marks
-      const pixelsPerEV = 100;
+      const pixelsPerEV = 65; // Snappier scale spacing
       const startEV = Math.floor(state.currentEV - (w / 2) / pixelsPerEV) - 1;
       const endEV = Math.ceil(state.currentEV + (w / 2) / pixelsPerEV) + 1;
 
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.5;
 
       for (let ev = startEV; ev <= endEV; ev += 0.1) {
         const evRounded = Math.round(ev * 10) / 10;
@@ -778,26 +779,26 @@
         const isHalf = Math.abs((evRounded * 10) % 5) < 0.01;
 
         if (isWhole) {
-          ctx.strokeStyle = '#a1a1aa';
+          ctx.strokeStyle = '#a1a1aa'; // Softened light gray main tick
           ctx.beginPath();
-          ctx.moveTo(x, h - 16);
+          ctx.moveTo(x, h - 22);
           ctx.lineTo(x, h);
           ctx.stroke();
 
-          ctx.fillStyle = '#f4f4f5';
-          ctx.font = '9px monospace';
+          ctx.fillStyle = '#d4d4d8'; // Softer digits (zinc-300 instead of stark white)
+          ctx.font = 'bold 12px monospace';
           ctx.textAlign = 'center';
-          ctx.fillText(`${Math.round(evRounded)}`, x, 11);
+          ctx.fillText(`${Math.round(evRounded)}`, x, 14);
         } else if (isHalf) {
-          ctx.strokeStyle = '#52525b';
+          ctx.strokeStyle = '#71717a'; // Muted mid-gray half tick
           ctx.beginPath();
-          ctx.moveTo(x, h - 12);
+          ctx.moveTo(x, h - 15);
           ctx.lineTo(x, h);
           ctx.stroke();
         } else {
-          ctx.strokeStyle = '#27272a';
+          ctx.strokeStyle = '#52525b'; // Subtle dark-gray minor tick
           ctx.beginPath();
-          ctx.moveTo(x, h - 7);
+          ctx.moveTo(x, h - 10);
           ctx.lineTo(x, h);
           ctx.stroke();
         }
@@ -814,7 +815,7 @@
     let animFrameId = null;
 
     function applyWheelDelta(deltaX) {
-      const evDelta = -deltaX / 100; // 100px per EV
+      const evDelta = -deltaX / 65; // Matches snappier 65px per EV ratio
       const newEV = Math.round((state.currentEV + evDelta) * 100) / 100;
       state.currentEV = Math.max(-10, Math.min(30, newEV));
 
@@ -826,9 +827,9 @@
     }
 
     function stepInertia() {
-      if (Math.abs(wheelVelocity) > 0.05) {
+      if (Math.abs(wheelVelocity) > 0.02) {
         applyWheelDelta(wheelVelocity);
-        wheelVelocity *= 0.97; // Lower decay factor (0.97 vs 0.94) = 2x longer spin inertia
+        wheelVelocity *= 0.985; // Lower friction decay (0.985) for effortless low-resistance spinning
         animFrameId = requestAnimationFrame(stepInertia);
       } else {
         wheelVelocity = 0;
