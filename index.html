@@ -57,32 +57,32 @@
     input[type=number] { -moz-appearance: textfield; }
   </style>
 </head>
-<body class="bg-zinc-950 text-zinc-100 min-h-screen w-screen flex flex-col justify-start p-2 max-w-lg mx-auto select-none gap-2 font-sans overflow-x-hidden">
+<body class="bg-zinc-950 text-zinc-100 min-h-screen w-screen flex flex-col justify-start p-2 pt-[25px] max-w-lg mx-auto select-none gap-2 font-sans overflow-x-hidden">
 
   <!-- 1st SECTION: Header Section -->
-  <header class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 shadow-sm shrink-0">
+  <header class="flex items-end justify-between bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 shadow-sm shrink-0">
     <div class="flex items-center gap-2">
       <button onclick="forceAppUpdate()" title="Force reload & update PWA" class="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center p-0.5 shadow overflow-hidden shrink-0 active:scale-95 transition">
         <img src="./icon-192.png" alt="Logo" class="w-full h-full object-contain" onerror="this.onerror=null; this.parentElement.innerHTML='<span class=\'text-zinc-400 font-bold text-[10px]\'>PJ</span>';">
       </button>
       <div class="flex items-baseline gap-1.5">
         <h1 class="text-base font-black tracking-tight text-zinc-100">PhiJet</h1>
-        <span class="text-xs font-semibold text-zinc-400">v0.18</span>
+        <span class="text-xs font-semibold text-zinc-400">v0.19</span>
       </div>
     </div>
 
     <div class="flex items-end gap-2">
       <!-- Mode Shortcuts -->
       <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg p-0.5 text-xs font-bold font-mono">
-        <button id="mode-m" onclick="setMode('manual')" class="px-3 py-1.5 rounded transition text-zinc-400 hover:text-zinc-100 text-sm">M</button>
-        <button id="mode-a" onclick="setMode('aperture')" class="px-3 py-1.5 rounded transition text-zinc-400 hover:text-zinc-100 text-sm">A</button>
-        <button id="mode-s" onclick="setMode('shutter')" class="px-3 py-1.5 rounded transition text-zinc-400 hover:text-zinc-100 text-sm">S</button>
-        <button id="mode-iso" onclick="setMode('iso')" class="px-3 py-1.5 rounded transition text-zinc-400 hover:text-zinc-100 text-sm">ISO</button>
+        <button id="mode-m" onclick="setMode('manual')" class="px-2.5 py-1 rounded transition text-zinc-400 hover:text-zinc-100">M</button>
+        <button id="mode-a" onclick="setMode('aperture')" class="px-2.5 py-1 rounded transition text-zinc-400 hover:text-zinc-100">A</button>
+        <button id="mode-s" onclick="setMode('shutter')" class="px-2.5 py-1 rounded transition text-zinc-400 hover:text-zinc-100">S</button>
+        <button id="mode-iso" onclick="setMode('iso')" class="px-2.5 py-1 rounded transition text-zinc-400 hover:text-zinc-100">ISO</button>
       </div>
 
-      <!-- Compact 6-Digit CountAPI Visitor Counter (Aligned to Bottom) -->
-      <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg px-1.5 py-1 text-[9px] font-mono text-zinc-600 shrink-0 shadow-inner self-end">
-        <span id="visitor-count" class="font-bold text-zinc-600 tracking-tighter leading-none">000000</span>
+      <!-- 6-Digit Visitor Counter Cell -->
+      <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg px-1.5 py-0.5 text-[9px] font-mono text-zinc-500 shrink-0 shadow-inner self-end">
+        <span id="visitor-count" class="font-bold text-zinc-500 tracking-tighter">000000</span>
       </div>
     </div>
   </header>
@@ -94,7 +94,7 @@
       <div class="bg-zinc-950 border border-zinc-800/80 rounded-lg p-1.5 flex flex-col justify-between">
         <span class="text-[9px] font-bold tracking-wider uppercase text-zinc-400">SPOT</span>
         <div class="flex items-center gap-1 my-0.5">
-          <input type="number" id="current-ev-input" step="0.1" value="11.0" onchange="onCurrentEVInputChange()" class="w-20 bg-zinc-900 border border-zinc-700 text-base font-black font-mono text-amber-400 rounded px-1 py-0 text-center focus:outline-none">
+          <input type="number" id="current-ev-input" step="0.1" value="9.0" onchange="onCurrentEVInputChange()" class="w-20 bg-zinc-900 border border-zinc-700 text-base font-black font-mono text-amber-400 rounded px-1 py-0 text-center focus:outline-none">
           <span class="text-[10px] font-semibold text-zinc-400">EV</span>
         </div>
       </div>
@@ -282,7 +282,7 @@
       </button>
       <button onclick="setPresetEV(0)" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg px-1 py-0.5 transition flex flex-col items-center justify-center min-w-0">
         <span class="text-[9px] font-bold font-mono text-amber-400 leading-tight">0 EV</span>
-        <span class="text-[7.5px] text-zinc-400 font-medium truncate w-full">night</span>
+        <span class="text-[7.5px] text-zinc-400 font-medium truncate w-full">dark</span>
       </button>
       <button onclick="setPresetEV(3)" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg px-1 py-0.5 transition flex flex-col items-center justify-center min-w-0">
         <span class="text-[9px] font-bold font-mono text-amber-400 leading-tight">3 EV</span>
@@ -290,7 +290,7 @@
       </button>
       <button onclick="setPresetEV(6)" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg px-1 py-0.5 transition flex flex-col items-center justify-center min-w-0">
         <span class="text-[9px] font-bold font-mono text-amber-400 leading-tight">6 EV</span>
-        <span class="text-[7.5px] text-zinc-400 font-medium truncate w-full">dark</span>
+        <span class="text-[7.5px] text-zinc-400 font-medium truncate w-full">dusk</span>
       </button>
       <button onclick="setPresetEV(9)" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 rounded-lg px-1 py-0.5 transition flex flex-col items-center justify-center min-w-0">
         <span class="text-[9px] font-bold font-mono text-amber-400 leading-tight">9 EV</span>
@@ -322,7 +322,7 @@
       aperture: Math.pow(Math.SQRT2, 3), // ~2.828
       shutter: 1 / 256,                  // ~0.00390625s
       iso: 400,
-      currentEV: 11.0,
+      currentEV: 9.0,                    // Default baseline preset: 9 EV (sunset)
       ndStops: 0,
       currentMode: 'manual', // 'manual', 'aperture', 'shutter', 'iso'
       showExactValues: false,
@@ -348,7 +348,7 @@
     };
 
     /* --------------------------------------------------------
-       HELPER UTILITIES & FORMULAS
+       HELPER UTILITIES & EVENT HANDLERS
     -------------------------------------------------------- */
     function calcCameraEV() {
       const ev100 = Math.log2((state.aperture * state.aperture) / state.shutter) - Math.log2(state.iso / 100);
@@ -423,41 +423,19 @@
       renderUI();
     }
 
-    function onCurrentEVInputChange() {
-      const inp = document.getElementById('current-ev-input');
-      const val = parseFloat(inp.value);
-      if (!isNaN(val)) {
-        state.currentEV = Math.max(-10, Math.min(30, val));
-        recomputeNonPriorityParam();
-        renderUI();
-      }
-    }
-
-    function setPresetEV(ev) {
-      state.currentEV = ev;
-      const inp = document.getElementById('current-ev-input');
-      if (inp) inp.value = ev.toFixed(1);
-      recomputeNonPriorityParam();
-      renderUI();
-    }
-
-    function stepND(evStep) {
-      let currentStops = state.ndStops;
-      currentStops += evStep;
-      if (currentStops < 0) currentStops = 0;
-      state.ndStops = currentStops;
-      recomputeNonPriorityParam();
-      renderUI();
-    }
-
     function onNDFactorInputChange() {
-      const inp = document.getElementById('nd-factor-input');
-      const val = parseFloat(inp.value);
-      if (!isNaN(val) && val >= 1) {
-        state.ndStops = Math.log2(val);
-      } else {
-        state.ndStops = 0;
-      }
+      const input = document.getElementById('nd-factor-input');
+      if (!input) return;
+      let factor = parseFloat(input.value);
+      if (isNaN(factor) || factor < 1) factor = 1;
+
+      state.ndStops = Math.log2(factor);
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function stepND(stops) {
+      state.ndStops = Math.max(0, state.ndStops + stops);
       recomputeNonPriorityParam();
       renderUI();
     }
@@ -472,75 +450,20 @@
       renderUI();
     }
 
-    function resetBaselines() {
-      state.aperture = Math.pow(Math.SQRT2, 3);
-      state.shutter = 1 / 256;
-      state.iso = 400;
-      state.currentEV = 11.0;
-      state.ndStops = 0;
-      state.currentMode = 'manual';
-      state.showExactValues = false;
-      state.useThirdSteps = false;
-
-      state.manualBaselines = {
-        aperture: state.aperture,
-        shutter: state.shutter,
-        iso: state.iso
-      };
-
-      state.limits = {
-        minAperture: 1.0,
-        maxAperture: 32.0,
-        minShutter: 1 / 8000,
-        maxShutter: 30.0,
-        minISO: 64,
-        maxISO: 6400
-      };
-
-      document.getElementById('current-ev-input').value = "11.0";
-      document.getElementById('min-aperture-input').value = "1.0";
-      document.getElementById('max-aperture-input').value = "32.0";
-      document.getElementById('min-shutter-input').value = "1/8000";
-      document.getElementById('max-shutter-input').value = "30";
-      document.getElementById('min-iso-input').value = "64";
-      document.getElementById('max-iso-input').value = "6400";
-
+    function onCurrentEVInputChange() {
+      const input = document.getElementById('current-ev-input');
+      if (!input) return;
+      let val = parseFloat(input.value);
+      if (isNaN(val)) val = 9.0;
+      state.currentEV = Math.max(-10, Math.min(30, val));
       recomputeNonPriorityParam();
       renderUI();
     }
 
-    function onLimitsChange() {
-      state.limits.minAperture = Math.max(0.7, parseFloat(document.getElementById('min-aperture-input').value) || 1.0);
-      state.limits.maxAperture = Math.min(64.0, parseFloat(document.getElementById('max-aperture-input').value) || 32.0);
-      state.limits.minShutter = parseShutterString(document.getElementById('min-shutter-input').value);
-      state.limits.maxShutter = parseShutterString(document.getElementById('max-shutter-input').value);
-      state.limits.minISO = Math.max(1, parseFloat(document.getElementById('min-iso-input').value) || 64);
-      state.limits.maxISO = Math.min(102400, parseFloat(document.getElementById('max-iso-input').value) || 6400);
-
-      recomputeNonPriorityParam();
-      renderUI();
-    }
-
-    function onManualInputChange(param) {
-      if (param === 'aperture') {
-        const val = parseFloat(document.getElementById('aperture-input').value);
-        if (!isNaN(val) && val > 0) {
-          state.aperture = val;
-          state.manualBaselines.aperture = val;
-        }
-      } else if (param === 'shutter') {
-        const val = parseShutterString(document.getElementById('shutter-input').value);
-        if (!isNaN(val) && val > 0) {
-          state.shutter = val;
-          state.manualBaselines.shutter = val;
-        }
-      } else if (param === 'iso') {
-        const val = parseFloat(document.getElementById('iso-input').value);
-        if (!isNaN(val) && val > 0) {
-          state.iso = val;
-          state.manualBaselines.iso = val;
-        }
-      }
+    function setPresetEV(ev) {
+      state.currentEV = ev;
+      const input = document.getElementById('current-ev-input');
+      if (input) input.value = ev.toFixed(1);
       recomputeNonPriorityParam();
       renderUI();
     }
@@ -793,10 +716,10 @@
       const isS = state.currentMode === 'shutter';
       const isISO = state.currentMode === 'iso';
 
-      document.getElementById('mode-m').className = `px-3 py-1.5 rounded transition ${isManual ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
-      document.getElementById('mode-a').className = `px-3 py-1.5 rounded transition ${isA ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
-      document.getElementById('mode-s').className = `px-3 py-1.5 rounded transition ${isS ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
-      document.getElementById('mode-iso').className = `px-3 py-1.5 rounded transition ${isISO ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
+      document.getElementById('mode-m').className = `px-2.5 py-1 rounded transition ${isManual ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
+      document.getElementById('mode-a').className = `px-2.5 py-1 rounded transition ${isA ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
+      document.getElementById('mode-s').className = `px-2.5 py-1 rounded transition ${isS ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
+      document.getElementById('mode-iso').className = `px-2.5 py-1 rounded transition ${isISO ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
 
       const cameraEV = calcCameraEV();
       const cameraEvEl = document.getElementById('camera-ev-display');
@@ -995,35 +918,94 @@
     }
 
     /* --------------------------------------------------------
-       COUNTAPI VISITOR STATS FETCH
+       COUNTAPI VISITOR COUNTER FETCH
     -------------------------------------------------------- */
     function fetchVisitorCount() {
       const countEl = document.getElementById('visitor-count');
       if (!countEl) return;
 
-      const apiKey = 'phijet-pwa-us4ge-2026-megakey';
-      fetch(`https://countapi.mileshilliard.com/api/v1/hit/${apiKey}`)
+      fetch('https://countapi.mileshilliard.com/api/v1/hit/phijet-pwa-us4ge-2026-megakey')
         .then(res => res.json())
         .then(data => {
-          const val = data?.value || data?.count || 0;
-          if (val > 0) {
-            countEl.textContent = String(val).padStart(6, '0');
+          if (data && typeof data.value === 'number') {
+            countEl.textContent = String(data.value).padStart(6, '0');
           }
         })
         .catch(err => {
-          console.warn('CountAPI offline or blocked:', err);
+          console.warn('CountAPI fetch offline or blocked:', err);
         });
     }
 
-    window.onload = function() {
-      initEVWheelEvents();
-      renderUI();
-      fetchVisitorCount();
-    };
-
     /* --------------------------------------------------------
-       PWA UPDATE & SERVICE WORKER REFRESH
+       MANUAL INPUT & LIMIT HANDLERS
     -------------------------------------------------------- */
+    function onManualInputChange(param) {
+      if (param === 'aperture') {
+        const inp = document.getElementById('aperture-input');
+        let val = parseFloat(inp.value);
+        if (isNaN(val) || val <= 0) val = 2.828;
+        state.aperture = val;
+        state.manualBaselines.aperture = val;
+      } else if (param === 'shutter') {
+        const inp = document.getElementById('shutter-input');
+        const val = parseShutterString(inp.value);
+        state.shutter = val;
+        state.manualBaselines.shutter = val;
+      } else if (param === 'iso') {
+        const inp = document.getElementById('iso-input');
+        let val = parseFloat(inp.value);
+        if (isNaN(val) || val <= 0) val = 400;
+        state.iso = val;
+        state.manualBaselines.iso = val;
+      }
+
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function onLimitsChange() {
+      const minA = parseFloat(document.getElementById('min-aperture-input').value);
+      const maxA = parseFloat(document.getElementById('max-aperture-input').value);
+      if (!isNaN(minA)) state.limits.minAperture = minA;
+      if (!isNaN(maxA)) state.limits.maxAperture = maxA;
+
+      const minS = parseShutterString(document.getElementById('min-shutter-input').value);
+      const maxS = parseShutterString(document.getElementById('max-shutter-input').value);
+      if (!isNaN(minS)) state.limits.minShutter = minS;
+      if (!isNaN(maxS)) state.limits.maxShutter = maxS;
+
+      const minISO = parseFloat(document.getElementById('min-iso-input').value);
+      const maxISO = parseFloat(document.getElementById('max-iso-input').value);
+      if (!isNaN(minISO)) state.limits.minISO = minISO;
+      if (!isNaN(maxISO)) state.limits.maxISO = maxISO;
+
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function resetBaselines() {
+      state.aperture = Math.pow(Math.SQRT2, 3); // f/2.8
+      state.shutter = 1 / 256;                  // 1/256s
+      state.iso = 400;
+      state.currentEV = 9.0;
+      state.ndStops = 0;
+      state.currentMode = 'manual';
+      state.showExactValues = false;
+      state.useThirdSteps = false;
+
+      state.manualBaselines = {
+        aperture: state.aperture,
+        shutter: state.shutter,
+        iso: state.iso
+      };
+
+      const evInput = document.getElementById('current-ev-input');
+      if (evInput) evInput.value = '9.0';
+
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
     function forceAppUpdate() {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -1031,13 +1013,17 @@
             registration.unregister();
           }
           window.location.reload(true);
-        }).catch(() => {
-          window.location.reload(true);
         });
       } else {
         window.location.reload(true);
       }
     }
+
+    window.onload = function() {
+      initEVWheelEvents();
+      renderUI();
+      fetchVisitorCount();
+    };
   </script>
 </body>
 </html>
