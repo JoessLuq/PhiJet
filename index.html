@@ -67,11 +67,11 @@
       </button>
       <div class="flex items-baseline gap-1.5">
         <h1 class="text-base font-black tracking-tight text-zinc-100">PhiJet</h1>
-        <span class="text-xs font-semibold text-zinc-400">v0.17</span>
+        <span class="text-xs font-semibold text-zinc-400">v0.18</span>
       </div>
     </div>
 
-    <div class="flex items-center gap-2">
+    <div class="flex items-end gap-2">
       <!-- Mode Shortcuts -->
       <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg p-0.5 text-xs font-bold font-mono">
         <button id="mode-m" onclick="setMode('manual')" class="px-3 py-1.5 rounded transition text-zinc-400 hover:text-zinc-100 text-sm">M</button>
@@ -80,9 +80,9 @@
         <button id="mode-iso" onclick="setMode('iso')" class="px-3 py-1.5 rounded transition text-zinc-400 hover:text-zinc-100 text-sm">ISO</button>
       </div>
 
-      <!-- Static 6-Digit Visitor Counter (Smaller size) -->
-      <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg px-1.5 py-0.5 text-[9px] font-mono text-zinc-500 shrink-0 shadow-inner">
-        <span id="visitor-count" class="font-bold text-zinc-600 tracking-tighter">000000</span>
+      <!-- Compact 6-Digit CountAPI Visitor Counter (Aligned to Bottom) -->
+      <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg px-1.5 py-1 text-[9px] font-mono text-zinc-600 shrink-0 shadow-inner self-end">
+        <span id="visitor-count" class="font-bold text-zinc-600 tracking-tighter leading-none">000000</span>
       </div>
     </div>
   </header>
@@ -348,7 +348,7 @@
     };
 
     /* --------------------------------------------------------
-       HELPER UTILITIES
+       HELPER UTILITIES & FORMULAS
     -------------------------------------------------------- */
     function calcCameraEV() {
       const ev100 = Math.log2((state.aperture * state.aperture) / state.shutter) - Math.log2(state.iso / 100);
@@ -419,6 +419,128 @@
         }
       }
 
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function onCurrentEVInputChange() {
+      const inp = document.getElementById('current-ev-input');
+      const val = parseFloat(inp.value);
+      if (!isNaN(val)) {
+        state.currentEV = Math.max(-10, Math.min(30, val));
+        recomputeNonPriorityParam();
+        renderUI();
+      }
+    }
+
+    function setPresetEV(ev) {
+      state.currentEV = ev;
+      const inp = document.getElementById('current-ev-input');
+      if (inp) inp.value = ev.toFixed(1);
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function stepND(evStep) {
+      let currentStops = state.ndStops;
+      currentStops += evStep;
+      if (currentStops < 0) currentStops = 0;
+      state.ndStops = currentStops;
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function onNDFactorInputChange() {
+      const inp = document.getElementById('nd-factor-input');
+      const val = parseFloat(inp.value);
+      if (!isNaN(val) && val >= 1) {
+        state.ndStops = Math.log2(val);
+      } else {
+        state.ndStops = 0;
+      }
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function toggleExactValues() {
+      state.showExactValues = !state.showExactValues;
+      renderUI();
+    }
+
+    function toggleStepMode() {
+      state.useThirdSteps = !state.useThirdSteps;
+      renderUI();
+    }
+
+    function resetBaselines() {
+      state.aperture = Math.pow(Math.SQRT2, 3);
+      state.shutter = 1 / 256;
+      state.iso = 400;
+      state.currentEV = 11.0;
+      state.ndStops = 0;
+      state.currentMode = 'manual';
+      state.showExactValues = false;
+      state.useThirdSteps = false;
+
+      state.manualBaselines = {
+        aperture: state.aperture,
+        shutter: state.shutter,
+        iso: state.iso
+      };
+
+      state.limits = {
+        minAperture: 1.0,
+        maxAperture: 32.0,
+        minShutter: 1 / 8000,
+        maxShutter: 30.0,
+        minISO: 64,
+        maxISO: 6400
+      };
+
+      document.getElementById('current-ev-input').value = "11.0";
+      document.getElementById('min-aperture-input').value = "1.0";
+      document.getElementById('max-aperture-input').value = "32.0";
+      document.getElementById('min-shutter-input').value = "1/8000";
+      document.getElementById('max-shutter-input').value = "30";
+      document.getElementById('min-iso-input').value = "64";
+      document.getElementById('max-iso-input').value = "6400";
+
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function onLimitsChange() {
+      state.limits.minAperture = Math.max(0.7, parseFloat(document.getElementById('min-aperture-input').value) || 1.0);
+      state.limits.maxAperture = Math.min(64.0, parseFloat(document.getElementById('max-aperture-input').value) || 32.0);
+      state.limits.minShutter = parseShutterString(document.getElementById('min-shutter-input').value);
+      state.limits.maxShutter = parseShutterString(document.getElementById('max-shutter-input').value);
+      state.limits.minISO = Math.max(1, parseFloat(document.getElementById('min-iso-input').value) || 64);
+      state.limits.maxISO = Math.min(102400, parseFloat(document.getElementById('max-iso-input').value) || 6400);
+
+      recomputeNonPriorityParam();
+      renderUI();
+    }
+
+    function onManualInputChange(param) {
+      if (param === 'aperture') {
+        const val = parseFloat(document.getElementById('aperture-input').value);
+        if (!isNaN(val) && val > 0) {
+          state.aperture = val;
+          state.manualBaselines.aperture = val;
+        }
+      } else if (param === 'shutter') {
+        const val = parseShutterString(document.getElementById('shutter-input').value);
+        if (!isNaN(val) && val > 0) {
+          state.shutter = val;
+          state.manualBaselines.shutter = val;
+        }
+      } else if (param === 'iso') {
+        const val = parseFloat(document.getElementById('iso-input').value);
+        if (!isNaN(val) && val > 0) {
+          state.iso = val;
+          state.manualBaselines.iso = val;
+        }
+      }
       recomputeNonPriorityParam();
       renderUI();
     }
@@ -671,10 +793,10 @@
       const isS = state.currentMode === 'shutter';
       const isISO = state.currentMode === 'iso';
 
-      document.getElementById('mode-m').className = `px-2.5 py-1 rounded transition ${isManual ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
-      document.getElementById('mode-a').className = `px-2.5 py-1 rounded transition ${isA ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
-      document.getElementById('mode-s').className = `px-2.5 py-1 rounded transition ${isS ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
-      document.getElementById('mode-iso').className = `px-2.5 py-1 rounded transition ${isISO ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
+      document.getElementById('mode-m').className = `px-3 py-1.5 rounded transition ${isManual ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
+      document.getElementById('mode-a').className = `px-3 py-1.5 rounded transition ${isA ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
+      document.getElementById('mode-s').className = `px-3 py-1.5 rounded transition ${isS ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
+      document.getElementById('mode-iso').className = `px-3 py-1.5 rounded transition ${isISO ? 'bg-amber-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-zinc-100'}`;
 
       const cameraEV = calcCameraEV();
       const cameraEvEl = document.getElementById('camera-ev-display');
@@ -872,6 +994,27 @@
       window.addEventListener('resize', drawEVWheel);
     }
 
+    /* --------------------------------------------------------
+       COUNTAPI VISITOR STATS FETCH
+    -------------------------------------------------------- */
+    function fetchVisitorCount() {
+      const countEl = document.getElementById('visitor-count');
+      if (!countEl) return;
+
+      const apiKey = 'phijet-pwa-us4ge-2026-megakey';
+      fetch(`https://countapi.mileshilliard.com/api/v1/hit/${apiKey}`)
+        .then(res => res.json())
+        .then(data => {
+          const val = data?.value || data?.count || 0;
+          if (val > 0) {
+            countEl.textContent = String(val).padStart(6, '0');
+          }
+        })
+        .catch(err => {
+          console.warn('CountAPI offline or blocked:', err);
+        });
+    }
+
     window.onload = function() {
       initEVWheelEvents();
       renderUI();
@@ -894,127 +1037,6 @@
       } else {
         window.location.reload(true);
       }
-    }
-
-    /* --------------------------------------------------------
-       LIBRECOUNTER TEXT FETCH
-    -------------------------------------------------------- */
-    function fetchVisitorCount() {
-      fetch('https://librecounter.org/counter.svg?id=PhiJet')
-        .then(res => res.text())
-        .then(svgText => {
-          const countEl = document.getElementById('visitor-count');
-          if (!countEl) return;
-
-          const matches = svgText.match(/<text[^>]*>([^<]+)<\/text>/g);
-          if (matches && matches.length > 0) {
-            const numStr = matches.map(m => m.replace(/<[^>]+>/g, '').trim()).join('');
-            const num = parseInt(numStr, 10);
-            if (!isNaN(num)) {
-              countEl.textContent = String(num).padStart(6, '0');
-              return;
-            }
-          }
-          countEl.textContent = '000000';
-        })
-        .catch(() => {
-          const countEl = document.getElementById('visitor-count');
-          if (countEl) countEl.textContent = '000000';
-        });
-    }
-
-    /* --------------------------------------------------------
-       EVENT HANDLERS & INPUT LISTENERS
-    -------------------------------------------------------- */
-    function onCurrentEVInputChange() {
-      const val = parseFloat(document.getElementById('current-ev-input').value);
-      if (!isNaN(val)) {
-        state.currentEV = val;
-        recomputeNonPriorityParam();
-        renderUI();
-      }
-    }
-
-    function onManualInputChange(param) {
-      const valStr = document.getElementById(`${param}-input`).value;
-      let numVal = param === 'shutter' ? parseShutterString(valStr) : parseFloat(valStr);
-
-      if (!isNaN(numVal) && numVal > 0) {
-        state[param] = numVal;
-        state.manualBaselines[param] = numVal;
-        recomputeNonPriorityParam();
-        renderUI();
-      }
-    }
-
-    function onLimitsChange() {
-      const minA = parseFloat(document.getElementById('min-aperture-input').value);
-      const maxA = parseFloat(document.getElementById('max-aperture-input').value);
-      const minS = parseShutterString(document.getElementById('min-shutter-input').value);
-      const maxS = parseShutterString(document.getElementById('max-shutter-input').value);
-      const minI = parseFloat(document.getElementById('min-iso-input').value);
-      const maxI = parseFloat(document.getElementById('max-iso-input').value);
-
-      if (!isNaN(minA)) state.limits.minAperture = minA;
-      if (!isNaN(maxA)) state.limits.maxAperture = maxA;
-      if (!isNaN(minS)) state.limits.minShutter = minS;
-      if (!isNaN(maxS)) state.limits.maxShutter = maxS;
-      if (!isNaN(minI)) state.limits.minISO = minI;
-      if (!isNaN(maxI)) state.limits.maxISO = maxI;
-
-      recomputeNonPriorityParam();
-      renderUI();
-    }
-
-    function stepND(direction) {
-      state.ndStops = Math.max(0, state.ndStops + direction);
-      recomputeNonPriorityParam();
-      renderUI();
-    }
-
-    function onNDFactorInputChange() {
-      const val = parseInt(document.getElementById('nd-factor-input').value, 10);
-      if (!isNaN(val) && val >= 1) {
-        state.ndStops = Math.round(Math.log2(val));
-        recomputeNonPriorityParam();
-        renderUI();
-      }
-    }
-
-    function setPresetEV(ev) {
-      state.currentEV = ev;
-      document.getElementById('current-ev-input').value = ev.toFixed(1);
-      recomputeNonPriorityParam();
-      renderUI();
-    }
-
-    function resetBaselines() {
-      state.aperture = Math.pow(Math.SQRT2, 3);
-      state.shutter = 1 / 256;
-      state.iso = 400;
-      state.currentEV = 11.0;
-      state.ndStops = 0;
-      state.currentMode = 'manual';
-
-      state.manualBaselines = {
-        aperture: state.aperture,
-        shutter: state.shutter,
-        iso: state.iso
-      };
-
-      document.getElementById('current-ev-input').value = '11.0';
-      recomputeNonPriorityParam();
-      renderUI();
-    }
-
-    function toggleExactValues() {
-      state.showExactValues = !state.showExactValues;
-      renderUI();
-    }
-
-    function toggleStepMode() {
-      state.useThirdSteps = !state.useThirdSteps;
-      renderUI();
     }
   </script>
 </body>
