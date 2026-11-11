@@ -2,7 +2,6 @@ const CACHE_NAME = 'phijet-v0.19-cache';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './app.js',
   './manifest.json',
   './icon-192.png',
   'https://cdn.tailwindcss.com',
